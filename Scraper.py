@@ -238,12 +238,6 @@ class DataStorage():
         return hasher.hexdigest()
 
 
-# Global regex templates to be used later. This way is more efficient than doing regex for every loop iteration.
-YYYYMMDD_REGEX = re.compile(r'^\d{4}-\d{2}.\d{2}')
-YYYY_REGEX = re.compile(r'\d{4}')
-event_name_REGEX = re.compile(r'ATP\s(.+?)\s\d{4}')
-
-
 class DataCleanup:
     def __init__(self):
         self.conn = sqlite3.connect('data.db')
@@ -260,7 +254,8 @@ class DataCleanup:
         # List to store new MatchDate with corresponding MatchID.
         # I tried doing the updating within the loop but the program took minutes to run. This is more efficient.
         data_to_update = []
-
+        YYYYMMDD_REGEX = re.compile(r'^\d{4}-\d{2}.\d{2}')
+        YYYY_REGEX = re.compile(r'\d{4}')
         for row in rows:
             event_id = row[0]
             match_id = row[1]
@@ -325,6 +320,7 @@ class DataCleanup:
 
         # An empty set instead of list (to avoid duplicates) to store extracted event name
         event_names = set()
+        event_name_REGEX = re.compile(r'ATP\s(.+?)\s\d{4}')
         for row in rows:
             event_id = row[0]
             match = event_name_REGEX.search(event_id)
