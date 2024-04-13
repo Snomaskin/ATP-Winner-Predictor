@@ -242,6 +242,8 @@ class DataCleanup:
     def __init__(self):
         self.conn = sqlite3.connect('data.db')
         self.cursor = self.conn.cursor()
+        self.YYYYMMDD_REGEX = re.compile(r'^\d{4}-\d{2}.\d{2}')
+        self.YYYY_REGEX = re.compile(r'\d{4}')
 
     def __del__(self):
         self.conn.close()
@@ -254,17 +256,16 @@ class DataCleanup:
         # List to store new MatchDate with corresponding MatchID.
         # I tried doing the updating within the loop but the program took minutes to run. This is more efficient.
         data_to_update = []
-        YYYYMMDD_REGEX = re.compile(r'^\d{4}-\d{2}.\d{2}')
-        YYYY_REGEX = re.compile(r'\d{4}')
+
         for row in rows:
             event_id = row[0]
             match_id = row[1]
             match_date = row[2]
 
-            if YYYYMMDD_REGEX.match(match_date):
+            if self.YYYYMMDD_REGEX.match(match_date):
                 continue
 
-            match = YYYY_REGEX.search(event_id)
+            match = self.YYYY_REGEX.search(event_id)
             if match:
                 year = int(match.group())
                 new_match_date = f"{year}-{match_date}"
@@ -284,10 +285,10 @@ class DataCleanup:
             event_id = row[0]
             match_date = row[1]
             # Check if MatchDate already has the correct format.
-            if YYYYMMDD_REGEX.match(match_date):
+            if self.YYYYMMDD_REGEX.match(match_date):
                 continue
 
-            match = YYYY_REGEX.search(event_id)
+            match = self.YYYY_REGEX.search(event_id)
 
             if not match:
                 self.cursor.execute("DELETE FROM MensATPSingles WHERE EventID = ?", (event_id,))
