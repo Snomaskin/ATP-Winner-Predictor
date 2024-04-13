@@ -99,7 +99,7 @@ class PrepareDataframe:
         # Calculate total wins for each player to store in the player index.
         player_index_df = self.calculate_total_wins(df, player_index_df)
         player_index_df.to_csv('player_index_df.csv', index=False)
-        print("Player index exported to player_index.csv")
+        print("Player index exported to 'player_index_df.csv'")
 
         return df
 
@@ -119,14 +119,14 @@ class PrepareDataframe:
         return player_index_df
 
     def create_court_surface_index(self):
-        court_surface_index = pd.DataFrame({'CourtSurface': ['Hard Court', 'Clay', 'Grass'], 'Index': [1, 2, 3]})
-        court_surface_index.to_csv(court_surface_index.csv, index=False)
-        print(f"Dataframe exported to court_surface_index.csv")
+        court_surface_index_df = pd.DataFrame({'CourtSurface': ['Hard Court', 'Clay', 'Grass'], 'Index': [1, 2, 3]})
+        court_surface_index_df.to_csv('court_surface_index_df.csv', index=False)
+        print(f"Dataframe exported to 'court_surface_index_df.csv'")
 
-    def encode_df_court_surface(self, df, index_filename: str):
+    def encode_df_court_surface(self, df):
         # Replace CourtSurface entries from dataset with their indexed values from above.
         # OBS this function also removes all entries where CurtSurface is missing.
-        index = pd.read_csv(index_filename)
+        index = pd.read_csv('court_surface_index_df.csv')
         encoded_df = pd.merge(df, index, how='left', on='CourtSurface')
         encoded_df.drop(columns=['CourtSurface'], inplace=True)
         encoded_df.rename(columns={'Index': 'CourtSurface'}, inplace=True)
@@ -175,16 +175,16 @@ class PrepareDataframe:
 
         return merged_df
 
-    def export_dataframe(self, df, filename='model_dataframe.csv'):
+    def export_dataframe(self, df, filename='model_df.csv'):
         df.to_csv(filename, index=False)
         print(f"Dataframe exported to {filename}")
 
 
 class ModelOperations:
     def __init__(self):
-        self.model_df = pd.read_csv('model_dataframe.csv')
-        self.player_index_df = pd.read_csv('player_index.csv')
-        self.court_surface_index = pd.read_csv('court_surface_index.csv')
+        self.model_df = pd.read_csv('model_df.csv')
+        self.player_index_df = pd.read_csv('player_index_df.csv')
+        self.court_surface_index_df = pd.read_csv('court_surface_index_df.csv')
 
     def preprocessing(self, df):
         x = df.drop(columns=['Target', 'MatchID', 'WinnerLoserHash'])
@@ -232,7 +232,7 @@ class ModelOperations:
     def court_surface_index_lookup(self, court_surface: str) -> int or None:
         # Lookup court surface with its index value in 'court_surface_index.csv'.
         court_surface_index_lookup = \
-            self.court_surface_index[self.court_surface_index['CourtSurface'] == court_surface]['Index'].values
+            self.court_surface_index_df[self.court_surface_index_df['CourtSurface'] == court_surface]['Index'].values
         if len(court_surface_index_lookup) == 0:
             print(f"""{court_surface} is either misspelled or does not exist in the database.
                   Possible values: Hard Court, Clay, Grass""")
