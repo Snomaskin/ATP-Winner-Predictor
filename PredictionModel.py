@@ -8,7 +8,6 @@ from sklearn.metrics import accuracy_score
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 '''
 PrepareDataframe:
 Takes a dataset (format below) and converts it's contents into a format prediction models can handle.
@@ -25,7 +24,7 @@ Output: model_dataframe.csv, player_index.csv, court_surface_index.csv
             Player2Country TEXT,
             Winner TEXT,
             Loser TEXT)
-            
+
 ModelOperations:
 Predicts the winner between two players using the RandomForest prediction model.
 Input(user): player1_name, player2_name, court_surface
@@ -81,7 +80,7 @@ class PrepareDataframe:
 
         return df
 
-    def create_player_index(self, df):
+    def create_player_index(self, df, filename='player_index_df.csv'):
         # Concatenate Player1 and Player2 into one list (contains duplicates).
         players = pd.concat([df['Player1'], df['Player2']], ignore_index=True)
 
@@ -98,8 +97,8 @@ class PrepareDataframe:
 
         # Calculate total wins for each player to store in the player index.
         player_index_df = self.calculate_total_wins(df, player_index_df)
-        player_index_df.to_csv('player_index_df.csv', index=False)
-        print("Player index exported to 'player_index_df.csv'")
+        player_index_df.to_csv(filename, index=False)
+        print(f"Player index exported to {filename}")
 
         return df
 
@@ -118,10 +117,10 @@ class PrepareDataframe:
 
         return player_index_df
 
-    def create_court_surface_index(self):
+    def create_court_surface_index(self, filename='court_surface_index_df.csv'):
         court_surface_index_df = pd.DataFrame({'CourtSurface': ['Hard Court', 'Clay', 'Grass'], 'Index': [1, 2, 3]})
-        court_surface_index_df.to_csv('court_surface_index_df.csv', index=False)
-        print(f"Dataframe exported to 'court_surface_index_df.csv'")
+        court_surface_index_df.to_csv(filename, index=False)
+        print(f"Dataframe exported to {filename}")
 
     def encode_df_court_surface(self, df):
         # Replace CourtSurface entries from dataset with their indexed values from above.
@@ -169,7 +168,8 @@ class PrepareDataframe:
         merged_df = pd.merge(df, player_index_df, left_on='Player1', right_on='Index', how='left')
         merged_df.rename(columns={'TotalWins': 'TotalWins_Player1'}, inplace=True)
 
-        merged_df = pd.merge(merged_df, player_index_df, left_on='Player2', right_on='Index', how='left', suffixes=('_Player1', '_Player2'))
+        merged_df = pd.merge(merged_df, player_index_df, left_on='Player2', right_on='Index', how='left',
+                             suffixes=('_Player1', '_Player2'))
         merged_df.rename(columns={'TotalWins': 'TotalWins_Player2'}, inplace=True)
         merged_df.drop(columns=['Player_Player1', 'Index_Player1', 'Player_Player2', 'Index_Player2'], inplace=True)
 
@@ -197,7 +197,8 @@ class ModelOperations:
         # I have just used standard values for these:
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
 
-        model_1 = RandomForestClassifier(random_state=42, n_estimators=500, n_jobs=-1, verbose=0, class_weight='balanced')
+        model_1 = RandomForestClassifier(random_state=42, n_estimators=500, n_jobs=-1, verbose=0,
+                                         class_weight='balanced')
         model_1.fit(x_train, y_train)
 
         # feature_importances = model_1.feature_importances_
@@ -251,9 +252,9 @@ class ModelOperations:
         # Count the number of rows where each player has Target == 1 means Player1 wins.
         # Returns a tuple (num_rows, num_columns). .shape[0] accesses the first element of the tuple.
         player1_wins_target1 = (player1_vs_player2[(player1_vs_player2['Player1'] == player1_index) &
-                                           (player1_vs_player2['Target'] == 1)]).shape[0]
+                                                   (player1_vs_player2['Target'] == 1)]).shape[0]
         player2_wins_target1 = (player1_vs_player2[(player1_vs_player2['Player1'] == player2_index) &
-                                           (player1_vs_player2['Target'] == 1)]).shape[0]
+                                                   (player1_vs_player2['Target'] == 1)]).shape[0]
         headtohead_value = player1_wins_target1 - player2_wins_target1
 
         return headtohead_value
@@ -265,12 +266,12 @@ class ModelOperations:
         input_data = pd.DataFrame({
             'Player1': [player1_index],
             'Player2': [player2_index],
-            #'WinnerLoserHash': [np.nan],
+            # 'WinnerLoserHash': [np.nan],
             'HeadToHead': [headtohead_value],
             'TotalWins_Player1': [np.nan],
             'TotalWins_Player2': [np.nan],
             'CourtSurface': [court_surface_index]
-        }) # columns=['Player1', 'Player2', 'WinnerLoserHash', 'HeadToHead', 'CourtSurface'])
+        })  # columns=['Player1', 'Player2', 'WinnerLoserHash', 'HeadToHead', 'CourtSurface'])
 
         model = self.model_evaluation()
         prediction_target = model.predict(input_data)
@@ -285,17 +286,17 @@ class ModelOperations:
         return predicted_winner_name
 
     # def hash_players_input(self, player1_index: int, player2_index: int) -> int:
-        # This is not needed since we can feed the model missing values (I did not know this before I made this method).
-        # hasher = hashlib.sha256()
-        # player1 = str(player1_index)
-        # player2 = str(player2_index)
-        # players = [player1, player2]
-        # Sort to fight bias when players are switched.
-        # players.sort()
-        # combined_players = "#".join(players)
-        # hasher.update(combined_players.encode('utf-8'))
-        # hash = hasher.hexdigest()
-        # short_hash = hash[:12]
-        # normalized_hash = int(short_hash, 16)
+    # This is not needed since we can feed the model missing values (I did not know this before I made this method).
+    # hasher = hashlib.sha256()
+    # player1 = str(player1_index)
+    # player2 = str(player2_index)
+    # players = [player1, player2]
+    # Sort to fight bias when players are switched.
+    # players.sort()
+    # combined_players = "#".join(players)
+    # hasher.update(combined_players.encode('utf-8'))
+    # hash = hasher.hexdigest()
+    # short_hash = hash[:12]
+    # normalized_hash = int(short_hash, 16)
 
-        #return normalized_hash
+    # return normalized_hash
