@@ -6,7 +6,9 @@ import hashlib
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score
 import numpy as np
-import matplotlib.pyplot as plt
+import os
+
+
 
 '''
 PrepareDataframe:
@@ -84,7 +86,7 @@ class PrepareDataframe:
         # Concatenate Player1 and Player2 into one list (contains duplicates).
         players = pd.concat([df['Player1'], df['Player2']], ignore_index=True)
 
-        # Create an array of players where name is unique.
+        # Remove duplicates.
         unique_names = players.unique()
 
         # Create a dictionary mapping unique names to unique IDs starting from 1
@@ -129,6 +131,7 @@ class PrepareDataframe:
         encoded_df = pd.merge(df, index, how='left', on='CourtSurface')
         encoded_df.drop(columns=['CourtSurface'], inplace=True)
         encoded_df.rename(columns={'Index': 'CourtSurface'}, inplace=True)
+        encoded_df.dropna(subset=['CourtSurface'], inplace=True)
 
         return encoded_df
 
@@ -147,7 +150,7 @@ class PrepareDataframe:
                 combined_players = "#".join(player1_winner)
                 hasher.update(combined_players.encode('utf-8'))
                 hash = hasher.hexdigest()
-                # Hasher returns a hex value that's too long for the prediction model to handle, so we need to shorten it.
+                # Hasher returns a hex value that's too long for the prediction model to handle, so it must be shortened.
                 short_hash = hash[:12]
                 # The prediction model also can't handle hex values, so it has to be converted to an integer.
                 normalized_hash = int(short_hash, 16)
@@ -182,9 +185,14 @@ class PrepareDataframe:
 
 class ModelOperations:
     def __init__(self):
-        self.model_df = pd.read_csv('model_df.csv')
-        self.player_index_df = pd.read_csv('player_index_df.csv')
-        self.court_surface_index_df = pd.read_csv('court_surface_index_df.csv')
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        model_df_path = os.path.join(script_dir, 'model_df.csv')
+        player_index_df_path = os.path.join(script_dir, 'player_index_df.csv')
+        court_surface_index_df_path = os.path.join(script_dir, 'court_surface_index_df.csv')
+
+        self.model_df = pd.read_csv(model_df_path)
+        self.player_index_df = pd.read_csv(player_index_df_path)
+        self.court_surface_index_df = pd.read_csv(court_surface_index_df_path)
 
     def preprocessing(self, df):
         x = df.drop(columns=['Target', 'MatchID', 'WinnerLoserHash'])
@@ -213,8 +221,8 @@ class ModelOperations:
         # plt.show()
 
         # Test accuracy of model for dataset
-        pred = model_1.predict(x_test)
-        print(accuracy_score(y_test, pred))
+        # pred = model_1.predict(x_test)
+        # print(accuracy_score(y_test, pred))
 
         return model_1
 
@@ -268,8 +276,8 @@ class ModelOperations:
             'Player2': [player2_index],
             # 'WinnerLoserHash': [np.nan],
             'HeadToHead': [headtohead_value],
-            'TotalWins_Player1': [np.nan],
-            'TotalWins_Player2': [np.nan],
+            'TotalWins_Player1': [None],
+            'TotalWins_Player2': [None],
             'CourtSurface': [court_surface_index]
         })  # columns=['Player1', 'Player2', 'WinnerLoserHash', 'HeadToHead', 'CourtSurface'])
 
