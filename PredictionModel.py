@@ -3,10 +3,12 @@ import sqlite3
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import hashlib
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score
+# from sklearn.preprocessing import LabelEncoder
+# from sklearn.metrics import accuracy_score
 import numpy as np
 import os
+
+
 
 
 
@@ -51,7 +53,7 @@ class PrepareDataframe:
         self.conn.close()
 
     def create_binary_target(self):
-        # Drop column not needed for prediction algorithm.
+        # Drop column not needed for the prediction algorithm.
         columns_drop = ['EventID', 'Player1Country', 'Player2Country', 'MatchDate', 'EventName']
         sub_df = self.df.drop(columns=columns_drop)
 

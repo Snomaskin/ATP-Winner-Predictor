@@ -1,6 +1,5 @@
 import sys
-from PySide6.QtWidgets import QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QApplication, QLineEdit, \
-    QMessageBox
+from PySide6.QtWidgets import QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QApplication, QLineEdit
 from PredictionModel import ModelOperations
 
 '''
@@ -65,7 +64,7 @@ class Wrapper:
     def __init__(self, model_operations):
         self.model_operations = model_operations
 
-    def user_input(self, player1_name_input: str, player2_name_input: str, court_surface: str) -> [int, float]:
+    def user_input(self, player1_name_input: str, player2_name_input: str, court_surface: str) -> str:
         player1_index, player2_index, court_surface_index = self.index_lookup(player1_name_input, player2_name_input,
                                                                               court_surface)
         predicted_winner_name = self.prediction_output(player1_index, player2_index, court_surface_index)
@@ -78,7 +77,7 @@ class Wrapper:
 
         return player1_index, player2_index, court_surface_index
 
-    def prediction_output(self, player1_index: int, player2_index: int, court_surface_index: int) -> [str, float]:
+    def prediction_output(self, player1_index: int, player2_index: int, court_surface_index: int) -> str:
         prediction_target = self.model_operations.predict_winner(player1_index, player2_index,
                                                                  court_surface_index)
         winner_name = self.model_operations.winner_name(player1_index, player2_index, prediction_target)
