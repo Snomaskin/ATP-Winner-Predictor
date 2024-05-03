@@ -9,9 +9,6 @@ import numpy as np
 import os
 
 
-
-
-
 '''
 PrepareDataframe:
 Takes a dataset (format below) and converts it's contents into a format prediction models can handle.
@@ -235,7 +232,7 @@ class ModelOperations:
         if len(player1_index_lookup) == 0 or len(player2_index_lookup) == 0:
             print("One or more player missing or is misspelled")
 
-            return None, None
+            raise ValueError("No matching player found in database. Please check spelling and input format.")
         else:
 
             return player1_index_lookup[0], player2_index_lookup[0]
