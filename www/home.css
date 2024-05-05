@@ -1,0 +1,82 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    font-family: "Comic Sans MS", "Comic Sans", Arial, cursive;
+}
+
+.background-container {
+    background-image: url('tennis_court.jpg'); 
+  
+    background-size: cover;
+    background-position: center;
+    height: 100%;
+    position: relative;
+}
+
+.overlay {
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 20px;
+    position: absolute;
+    top: 50%;
+    left: 48%;
+    transform: translate(-50%, -50%);
+}
+
+.input-container {
+    margin-bottom: 20px;
+    width: 200px;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.instructions {
+    margin-top: -15px; 
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+.prediction-container {
+    display: none;
+    width: 150px;
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+a:hover {
+    opacity: 0.8; 
+}
+
+img {
+    margin-right: 10px; 
+}
+
+.github-icon {
+    position: absolute;
+    bottom: 10px; 
+    right: 10px; 
+    z-index: 999; 
+}

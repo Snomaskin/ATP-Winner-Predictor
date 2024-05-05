@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winner Prediction</title>
+    <link rel="stylesheet" href="home.css">
+</head>
+<body>
+    <div class="background-container">
+        <div class="overlay">
+            <h1>Men's Singles ATP<br>
+                Winner Predictor</h1>
+            <form id="prediction-form">
+                <div class="input-container">
+                    <label for="player1">Player 1:</label>
+                    <input type="text" id="player1" name="player1" required>
+                </div>
+                <div class="input-container">
+                    <label for="player2">Player 2:</label>
+                    <input type="text" id="player2" name="player2" required>
+                </div>
+                <div class="instructions">
+                    <p>Input Format:<br>
+                        'LastName FirstNameInitial.' (e.g. 'Nadal R.')
+                    </p>
+                </div>
+                <div class="input-container">
+                    <label for="court_surface">Court Surface:</label>
+                    <input type="text" id="court_surface" name="court_surface" required>
+                </div>
+                <div class="instructions">
+                    <p>Court Surface Options:<br>
+                        'Hard Court', 'Grass', 'Clay'<br>
+                        (Input is case sensitive)
+                    </p>
+                        
+                </div>
+                <button type="submit">Predict Winner</button>
+                <a href="https://github.com/Snomaskin/ATP-Winner-Predictor" target="_blank" class="github-icon">
+                    <img src="github-mark.png" alt="GitHub Repository" width="50" height="50">
+                </a>
+            </form>
+            <div class="prediction-container">
+                <div id="prediction-result"></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("prediction-form").addEventListener("submit", function(event) {
+            // Default form submission refreshes page. We need to prevent this.
+            event.preventDefault(); 
+            // Create a formData object of submitted data in the form element. 
+            const formData = {
+                player1: document.getElementById("player1").value,
+                player2: document.getElementById("player2").value,
+                court_surface: document.getElementById("court_surface").value
+            };
+            const jsonData = JSON.stringify(formData);
+            // Formdata APi request. Returns a Promise that resolves with the response object.
+            fetch("/winner_predict", {
+                method: "POST",
+                body: jsonData,
+                headers: {
+                    "Content-Type": "application/json"
+                } 
+            })
+            .then(response => {
+                if (response.status === 200){
+                    return response.text();
+                } else {
+                    return response.text().then(invalidResponse => {
+                        throw new Error(invalidResponse);
+                    });
+                }
+            })
+            .then(winnerName => {
+                const predictionResult = document.getElementById("prediction-result");
+                const predictionContainer = document.querySelector(".prediction-container");
+                winnerName = winnerName.replace(/['"]+/g, '').trim();
+                predictionResult.innerText = 'Predicted Winner: ' + winnerName;
+                predictionContainer.style.display = "block";
+            })
+            .catch(error => {
+                const predictionResult = document.getElementById("prediction-result");
+                const predictionContainer = document.querySelector(".prediction-container");
+                let errorString = error.message;
+                errorString = errorString.replace(/[{}":]+|detail/g, '').trim();
+                predictionResult.innerText = errorString;
+                predictionContainer.style.display = "block";
+            })
+        });
+    </script>
+</body>
+</html>
