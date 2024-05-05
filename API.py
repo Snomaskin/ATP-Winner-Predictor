@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi import HTTPException
 from Wrapper import InputHandler
 from pydantic import BaseModel
 
@@ -14,6 +15,8 @@ class PredictionRequest(BaseModel):
 
 @app.post("/winner_predict")
 async def prediction_request(request_data: PredictionRequest):
-    winner_name = handler.user_input(request_data.player1, request_data.player2, request_data.court_surface)
-    
+    try:
+        winner_name = handler.user_input(request_data.player1, request_data.player2, request_data.court_surface)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return winner_name

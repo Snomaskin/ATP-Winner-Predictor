@@ -237,15 +237,13 @@ class ModelOperations:
 
             return player1_index_lookup[0], player2_index_lookup[0]
 
-    def court_surface_index_lookup(self, court_surface: str) -> int or None:
+    def court_surface_index_lookup(self, court_surface: str) -> int:
         # Lookup court surface with its index value in 'court_surface_index.csv'.
         court_surface_index_lookup = \
             self.court_surface_index_df[self.court_surface_index_df['CourtSurface'] == court_surface]['Index'].values
         if len(court_surface_index_lookup) == 0:
-            print(f"""{court_surface} is either misspelled or does not exist in the database.
-                  Possible values: Hard Court, Clay, Grass""")
 
-            return None
+            raise ValueError("No match found for specified court surface. Please check spelling and input format.")
         else:
 
             return court_surface_index_lookup[0]
