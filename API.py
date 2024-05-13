@@ -4,6 +4,7 @@ from Wrapper import InputHandler
 from pydantic import BaseModel
 from uvicorn import run
 
+
 app = FastAPI()
 handler = InputHandler()
 
@@ -22,5 +23,6 @@ async def prediction_request(request_data: PredictionRequest):
         raise HTTPException(status_code=400, detail=str(e))
     return winner_name
 
+
 if __name__ == "__main__":
-    run(app, host="172.31.43.188", port=8000, reload=True)
+    run("API:app", port=8000)
