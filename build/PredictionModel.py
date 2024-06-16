@@ -185,9 +185,9 @@ class PrepareDataframe:
 class ModelOperations:
     def __init__(self):
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        model_df_path = os.path.join(script_dir, 'model_df.csv')
-        player_index_df_path = os.path.join(script_dir, 'player_index_df.csv')
-        court_surface_index_df_path = os.path.join(script_dir, 'court_surface_index_df.csv')
+        model_df_path = os.path.join(script_dir, 'tables', 'model_df.csv')
+        player_index_df_path = os.path.join(script_dir, 'tables', 'player_index_df.csv')
+        court_surface_index_df_path = os.path.join(script_dir, 'tables', 'court_surface_index_df.csv')
 
         self.model_df = pd.read_csv(model_df_path)
         self.player_index_df = pd.read_csv(player_index_df_path)
@@ -289,19 +289,3 @@ class ModelOperations:
             self.player_index_df[self.player_index_df['Index'] == predicted_winner_index]['Player'].values[0]
 
         return predicted_winner_name
-
-    # def hash_players_input(self, player1_index: int, player2_index: int) -> int:
-    # This is not needed since we can feed the model missing values (I did not know this before I made this method).
-    # hasher = hashlib.sha256()
-    # player1 = str(player1_index)
-    # player2 = str(player2_index)
-    # players = [player1, player2]
-    # Sort to fight bias when players are switched.
-    # players.sort()
-    # combined_players = "#".join(players)
-    # hasher.update(combined_players.encode('utf-8'))
-    # hash = hasher.hexdigest()
-    # short_hash = hash[:12]
-    # normalized_hash = int(short_hash, 16)
-
-    # return normalized_hash
