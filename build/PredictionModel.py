@@ -181,6 +181,15 @@ class PrepareDataframe:
         df.to_csv(filename, index=False)
         print(f"Dataframe exported to {filename}")
 
+    def prepare_dataframe(self):
+        self.df = self.create_binary_target()
+        self.df = self.create_player_index(self.df)
+        self.df = self.winner_hash(self.df)
+        self.df = self.create_headtohead(self.df)
+        player_index_df = pd.read_csv('player_index_df.csv')
+        self.df = self.merge_total_wins(self.df, player_index_df)
+        self.df = self.encode_df_court_surface(self.df)
+        self.export_dataframe(self.df)
 
 class ModelOperations:
     def __init__(self):
@@ -225,24 +234,20 @@ class ModelOperations:
 
         return model_1
 
-    def player_index_lookup(self, player1_name: str, player2_name: str) -> [int, int]:
+    def player_index_lookup(self, player_name: str) -> int:
         # Lookup player names with their indices in 'player_index.csv'.
-        player1_index_lookup = self.player_index_df[self.player_index_df['Player'] == player1_name]['Index'].values
-        player2_index_lookup = self.player_index_df[self.player_index_df['Player'] == player2_name]['Index'].values
-        if len(player1_index_lookup) == 0 or len(player2_index_lookup) == 0:
-            print("One or more player missing or is misspelled")
-
+        player_index = self.player_index_df[self.player_index_df['Player'] == player_name]['Index'].values
+        if len(player_index) == 0:
             raise ValueError("No matching player found in database. Please check spelling and input format.")
         else:
 
-            return player1_index_lookup[0], player2_index_lookup[0]
+            return player_index[0]
 
     def court_surface_index_lookup(self, court_surface: str) -> int:
         # Lookup court surface with its index value in 'court_surface_index.csv'.
         court_surface_index_lookup = \
             self.court_surface_index_df[self.court_surface_index_df['CourtSurface'] == court_surface]['Index'].values
         if len(court_surface_index_lookup) == 0:
-
             raise ValueError("No match found for specified court surface. Please check spelling and input format.")
         else:
 
@@ -289,3 +294,12 @@ class ModelOperations:
             self.player_index_df[self.player_index_df['Index'] == predicted_winner_index]['Player'].values[0]
 
         return predicted_winner_name
+
+    def lookup_total_wins(self, player_index: int) -> int:
+        player1_match = self.model_df[self.model_df['Player1'] == player_index]
+        if not player1_match.empty:
+            return player1_match.iloc[0]['TotalWins_Player1']
+        
+        player2_match = self.model_df[self.model_df['Player1'] == player_index]
+        if not player2_match.empty:
+            return player2_match.iloc[0]['TotalWins_Player2']
