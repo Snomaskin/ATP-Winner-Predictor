@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winner Prediction and Player Stats Lookup</title>
+    <link rel="preload" as="image" href="tennis_court.jpg">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        .background-container {
+            background-image: url('tennis_court.jpg'); 
+            background-size: cover;
+            background-position: center;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .overlay {
+            background-color: rgba(255, 255, 255, 0.7);
+            width: 350px; 
+            height: 560px; 
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative; 
+        }
+    </style>
+    <link rel="stylesheet" href="home.css">
+
+</head>
+<body>
+    <div class="background-container">
+        <div class="overlay">
+            <div class="fixed-header">
+                <h1>Men's Singles ATP</h1>
+                <div class="radio-container">
+                    <input type="radio" id="predict_winner" name="operation" value="predict_winner" checked>
+                    <label for="predict_winner">Predict Winner</label>
+                    <input type="radio" id="lookup_stats" name="operation" value="lookup_stats">
+                    <label for="lookup_stats">Lookup Player Stats</label>
+                </div>
+            </div>
+            <div class="content-container">
+                <form id="operation-form">
+                    <div id="winner-prediction-fields">
+                        <div class="input-container">
+                            <label for="player1">Player 1:</label>
+                            <input type="text" id="player1" name="player1">
+                        </div>
+                        <div class="input-container">
+                            <label for="player2">Player 2:</label>
+                            <input type="text" id="player2" name="player2">
+                        </div>
+                        <div class="instructions">
+                            <p>Input Format:<br>
+                                'LastName FirstNameInitial.' <br> 
+                                (e.g. 'Nadal R.')
+                            </p>
+                        </div>
+                        <div class="input-container">
+                            <label for="court_surface">Court Surface:</label>
+                            <input type="text" id="court_surface" name="court_surface">
+                        </div>
+                        <div class="instructions">
+                            <p>Court Surface Options:<br>
+                                'Hard Court', 'Grass', 'Clay'<br>
+                                (Input is case sensitive)
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="player-stats-fields" style="display: none;">
+                        <div class="input-container">
+                            <label for="player_name">Player Name:</label>
+                            <input type="text" id="player_name" name="player_name">
+                        </div>
+                        <div class="instructions">
+                            <p>Input Format:<br>
+                                'LastName FirstNameInitial.'<br>
+                                (e.g. 'Nadal R.')
+                            </p>
+                        </div>
+                    </div>
+                    <div class="action-container">
+                        <button type="submit">Submit</button>
+                        <a href="https://github.com/Snomaskin/ATP-Winner-Predictor" target="_blank" class="github-icon">
+                            <img src="github-mark.png" alt="GitHub Repository" width="50" height="50">
+                        </a>
+                    </div>
+                </form>
+            </div>
+            <div class="prediction-container">
+                <div id="prediction-result"></div>
+            </div>
+            <div class="player-stats-container">
+                <div id="player1-stats"></div>
+                <div id="player2-stats"></div>
+                <div id="player-stats-result"></div>
+            </div>
+            <div class="speech-bubble" id="speech-bubble">
+                <div id="speech-bubble-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSpeechBubble(message) {
+            const bubble = document.getElementById('speech-bubble');
+            const bubbleContent = document.getElementById('speech-bubble-content');
+            bubbleContent.innerText = message;
+            bubble.style.display = 'block';
+        }
+
+        document.getElementById('speech-bubble').addEventListener('click', function() {
+            this.style.display = 'none';
+        });
+
+        document.getElementById("operation-form").addEventListener("submit", function(event) {
+            event.preventDefault(); showSpeechBubble('Loading...');
+
+            const operation = document.querySelector('input[name="operation"]:checked').value;
+
+            if (operation === "predict_winner") {
+                predictWinner();
+            } else if (operation === "lookup_stats") {
+                lookupPlayerStats();
+            }
+        });
+
+        document.querySelectorAll('input[name="operation"]').forEach((radio) => {
+            radio.addEventListener("change", function() {
+                if (this.value === "predict_winner") {
+                    document.getElementById("winner-prediction-fields").style.display = "block";
+                    document.getElementById("player-stats-fields").style.display = "none";
+                } else if (this.value === "lookup_stats") {
+                    document.getElementById("winner-prediction-fields").style.display = "none";
+                    document.getElementById("player-stats-fields").style.display = "block";
+                }
+            });
+        });
+
+        function predictWinner() {
+            const formData = {
+                player1: document.getElementById("player1").value,
+                player2: document.getElementById("player2").value,
+                court_surface: document.getElementById("court_surface").value
+            };
+            const jsonData = JSON.stringify(formData);
+
+            fetch("https://fastapi-iywl5fy4ka-lz.a.run.app/predict_winner", {
+                method: "POST",
+                body: jsonData,
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => {
+                if (response.status === 200){
+                    return response.text();
+                } else {
+                    return response.text().then(invalidResponse =>{
+                        invalidResponse =invalidResponse.replace('{"detail":"', '').replace('"}', '');
+                        throw new Error(invalidResponse);
+                    });
+                }
+            })
+            .then(winnerName => {
+                showSpeechBubble(winnerName);
+            })
+            .catch(error => {
+                showSpeechBubble(error.message)
+            });
+        }
+
+        function lookupPlayerStats() {
+            const formData = {
+                player: document.getElementById("player_name").value
+            };
+            const jsonData = JSON.stringify(formData);
+
+            fetch("https://fastapi-iywl5fy4ka-lz.a.run.app/lookup_player_stats", {
+                method: "POST",
+                body: jsonData,
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            
+            .then(response =>{
+                if (response.status === 200){
+                    return response.text();
+                } else {
+                    return response.text().then(invalidResponse =>{
+                        invalidResponse =invalidResponse.replace('{"detail":"', '').replace('"}', '');
+                        throw new Error(invalidResponse);
+                    });
+                }
+            })
+
+            .then(playerStats => {
+                showSpeechBubble(playerStats);
+            })
+
+            .catch(error => {
+                showSpeechBubble(error.message);
+            });
+        }
+    </script>
+</body>
+</html>
