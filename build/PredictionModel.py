@@ -27,9 +27,7 @@ Output: model_dataframe.csv, player_index.csv, court_surface_index.csv
             Loser TEXT)
 
 ModelOperations:
-Predicts the winner between two players using the RandomForest prediction model.
-Input(user): player1_name, player2_name, court_surface
-Output: winner_name
+Various functions to interact with the dataset. Can be mapped to an API (see API.py).
 
 Known issues:
 Prediction output 'winner_name' remains consistent when players have met each other before (headtohead score >0 or <0) but
@@ -67,7 +65,7 @@ class PrepareDataframe:
 
         return sub_df
 
-    def create_headtohead(self, df):
+    def calc_headtohead(self, df):
         # Variable to measure total wins/losses in matchup between Player1 and Player2.
         df['HeadToHead'] = 0
         for index, row in df.iterrows():
@@ -81,7 +79,7 @@ class PrepareDataframe:
 
         return df
 
-    def create_player_index(self, df, filename='player_index_df.csv'):
+    def make_player_index(self, df, filename='player_index_df.csv'):
         # Concatenate Player1 and Player2 into one list (contains duplicates).
         players = pd.concat([df['Player1'], df['Player2']], ignore_index=True)
 
@@ -118,7 +116,7 @@ class PrepareDataframe:
 
         return player_index_df
 
-    def create_court_surface_index(self, filename='court_surface_index_df.csv'):
+    def make_court_surface_index(self, filename='court_surface_index_df.csv'):
         court_surface_index_df = pd.DataFrame({'CourtSurface': ['Hard Court', 'Clay', 'Grass'], 'Index': [1, 2, 3]})
         court_surface_index_df.to_csv(filename, index=False)
         print(f"Dataframe exported to {filename}")
@@ -134,7 +132,7 @@ class PrepareDataframe:
 
         return encoded_df
 
-    def winner_hash(self, df):
+    def matchup_hash(self, df):
         # Hash Player1(index) and Player2(index). Winner first.
         # Reason for this is to even out the bias towards either Player1 or Player2 in the dataset->
         # where a player appears more in either column.
@@ -238,20 +236,30 @@ class ModelOperations:
         # Lookup player names with their indices in 'player_index.csv'.
         player_index = self.player_index_df[self.player_index_df['Player'] == player_name]['Index'].values
         if len(player_index) == 0:
-            raise ValueError("No matching player found in database. Please check spelling and input format.")
+            raise ValueError(f"No match found for '{player_name}'. Please check spelling and input format.")
         else:
 
             return player_index[0]
+        
+    def player_name_lookup(self, player_index: int) -> str:
+        player_name = self.player_index_df[self.player_index_df['Index'] == player_index]['Player'].values
 
-    def court_surface_index_lookup(self, court_surface: str) -> int:
+        return player_name[0]
+
+    def court_surface_index_lookup(self, surface_name: str) -> int:
         # Lookup court surface with its index value in 'court_surface_index.csv'.
-        court_surface_index_lookup = \
-            self.court_surface_index_df[self.court_surface_index_df['CourtSurface'] == court_surface]['Index'].values
-        if len(court_surface_index_lookup) == 0:
-            raise ValueError("No match found for specified court surface. Please check spelling and input format.")
+        surface_index_lookup = \
+            self.court_surface_index_df[self.court_surface_index_df['CourtSurface'] == surface_name]['Index'].values
+        if len(surface_index_lookup) == 0:
+            raise ValueError(f"No match found for '{surface_name}'. Please check spelling and input format.")
         else:
 
-            return court_surface_index_lookup[0]
+            return surface_index_lookup[0]
+        
+    def court_surface_name_lookup(self, surface_index: int) -> str:
+        surface_name_lookup = self.court_surface_index_df[self.court_surface_index_df['Index'] == surface_index]['CourtSurface'].values
+
+        return surface_name_lookup[0]
 
     def calculate_headtohead(self, player1_index: int, player2_index: int) -> int:
         # Grab all rows where player1_index vs player2_index and vice versa.
@@ -295,11 +303,40 @@ class ModelOperations:
 
         return predicted_winner_name
 
-    def lookup_total_wins(self, player_index: int) -> int:
+    def total_wins_lookup(self, player_index: int) -> int:
         player1_match = self.model_df[self.model_df['Player1'] == player_index]
         if not player1_match.empty:
-            return player1_match.iloc[0]['TotalWins_Player1']
+            return int(player1_match.iloc[0]['TotalWins_Player1'])
         
-        player2_match = self.model_df[self.model_df['Player1'] == player_index]
+        player2_match = self.model_df[self.model_df['Player2'] == player_index]
         if not player2_match.empty:
-            return player2_match.iloc[0]['TotalWins_Player2']
+            return int(player2_match.iloc[0]['TotalWins_Player2'])
+    
+    def nemesis_lookup(self, player_index:int) -> str:
+        player1_matches = self.model_df[self.model_df['Player1'] == player_index]
+        player2_matches = self.model_df[self.model_df['Player2'] == player_index]
+
+        player1_head_to_head = player1_matches[['Player2', 'HeadToHead']]
+        player2_head_to_head = player2_matches[['Player1', 'HeadToHead']]
+        player2_head_to_head.loc[:, 'HeadToHead'] = player2_head_to_head['HeadToHead'].abs()
+
+        player1_head_to_head.columns = ['Opponent', 'HeadToHead']
+        player2_head_to_head.columns = ['Opponent', 'HeadToHead']
+
+        combined_head_to_head = pd.concat([player1_head_to_head, player2_head_to_head])
+
+        nemesis_row = combined_head_to_head.loc[combined_head_to_head['HeadToHead'].idxmax()]
+        nemesis_player_index = nemesis_row['Opponent']
+        nemesis_player = self.player_name_lookup(nemesis_player_index)
+
+        return str(nemesis_player)
+    
+    def favorite_surface(self, player_index:int) -> str:
+        player1_wins = self.model_df[(self.model_df['Player1'] == player_index) & (self.model_df['Target'] == 1)]
+        player2_wins = self.model_df[(self.model_df['Player2'] == player_index) & (self.model_df['Target'] == 0)]
+
+        combined_wins = pd.concat([player1_wins, player2_wins])
+        surface_index = combined_wins['CourtSurface'].mode().iloc[0]
+        surface_name = self.court_surface_name_lookup(surface_index)
+
+        return str(surface_name)

@@ -60,7 +60,7 @@
             };
             const jsonData = JSON.stringify(formData);
             // Formdata APi request. Returns a Promise that resolves with the response object.
-            fetch("https://b767gh72u5.execute-api.eu-north-1.amazonaws.com/Test/winner_predict", {
+            fetch("http://localhost:8000/predict_winner", {
                 method: "POST",
                 body: jsonData,
                 headers: {
