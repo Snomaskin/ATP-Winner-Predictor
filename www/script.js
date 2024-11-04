@@ -49,32 +49,30 @@ function fetchData(url, formData){
     });
 }
 
-document.addEventListener('DOMContentLoaded', function(){
-    document.getElementById('speech-bubble').addEventListener('click', function() {
-        this.style.display = 'none';
-    });
+document.getElementById('speech-bubble').addEventListener('click', function() {
+    this.style.display = 'none';
+});
 
-    document.getElementById("operation-form").addEventListener("submit", (formSubmit) => {
-        formSubmit.preventDefault(); showSpeechBubble('Loading...');
+document.getElementById("operation-form").addEventListener("submit", (formSubmit) => {
+    formSubmit.preventDefault(); showSpeechBubble('Loading...');
 
-        const operation = document.querySelector('input[name="operation"]:checked').value;
+    const operation = document.querySelector('input[name="operation"]:checked').value;
 
-        if (operation === "predict_winner") {
-            predictWinner();
-        } else if (operation === "lookup_stats") {
-            lookupPlayerStats();
-        }
-    });
+    if (operation === "predict_winner") {
+        predictWinner();
+    } else if (operation === "lookup_stats") {
+        lookupPlayerStats();
+    }
+});
 //  Control which form to display:
-    document.querySelectorAll('input[name="operation"]').forEach(radio => {
-        radio.addEventListener("change", function() {
-            if (this.value === "predict_winner") {
-                document.getElementById("winner-prediction-fields").style.display = "block";
-                document.getElementById("player-stats-fields").style.display = "none";
-            } else if (this.value === "lookup_stats") {
-                document.getElementById("winner-prediction-fields").style.display = "none";
-                document.getElementById("player-stats-fields").style.display = "block";
-            }
-        });
+document.querySelectorAll('input[name="operation"]').forEach(radio => {
+    radio.addEventListener("change", function() {
+        if (this.value === "predict_winner") {
+            document.getElementById("winner-prediction-fields").style.display = "block";
+            document.getElementById("player-stats-fields").style.display = "none";
+        } else if (this.value === "lookup_stats") {
+            document.getElementById("winner-prediction-fields").style.display = "none";
+            document.getElementById("player-stats-fields").style.display = "block";
+        }
     });
 });
