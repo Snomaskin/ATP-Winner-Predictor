@@ -22,7 +22,7 @@ body {
 .overlay {
     background-color: rgba(255, 255, 255, 0.7);
     width: 350px; 
-    height: 560px; 
+    height: 520px; 
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     display: flex;
@@ -61,6 +61,19 @@ body {
 }
 
 input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+input::placeholder {
+    font-family: "Comic Sans MS", "Comic Sans", Arial, cursive;
+    color: rgba(0, 0, 0, 0.5); 
+    font-style: italic; 
+}
+
+#court_surface{
     width: 100%;
     padding: 8px;
     border: 1px solid #ccc;
@@ -142,3 +155,28 @@ img {
     border-top-color: #f9f9f9;
 }
 
+/* autoLookup styles */
+.suggestions-list {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    position: absolute; 
+    z-index: 1000;
+    width: 100%;
+    max-height: 150px;
+    overflow-y: auto;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.suggestions-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.suggestions-item:hover {
+    background-color: #f0f0f0;
+}

@@ -33,82 +33,64 @@
             position: relative; 
         }
     </style>
-    <link rel="stylesheet" href="home.css">
+    <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
-    <div class="background-container">
-        <div class="overlay">
-            <div class="fixed-header">
-                <h1>Men's Singles ATP</h1>
-                <div class="radio-container">
-                    <input type="radio" id="predict_winner" name="operation" value="predict_winner" checked>
-                    <label for="predict_winner">Predict Winner</label>
-                    <input type="radio" id="lookup_stats" name="operation" value="lookup_stats">
-                    <label for="lookup_stats">Lookup Player Stats</label>
+    <body>
+        <div class="background-container">
+            <div class="overlay">
+                <div class="fixed-header">
+                    <h2>Tennis: Men's Singles</h2>
+                    <div class="radio-container">
+                        <input type="radio" id="predict_winner" name="form_selector" value="predict_winner" checked>
+                        <label for="predict_winner">Predict Winner</label>
+                        <input type="radio" id="lookup_stats" name="form_selector" value="lookup_stats">
+                        <label for="lookup_stats">Lookup Player Stats</label>
+                    </div>
+                </div>
+                <div class="content-container">
+                    <form id="form">
+                        <div id="winner-prediction-fields">
+                            <div class="input-container">
+                                <label for="player1">Player 1:</label>
+                                <input type="text" id="player1" placeholder="Start typing..." autocomplete="off">
+                            </div>
+                            <div class="input-container">
+                                <label for="player2">Player 2:</label>
+                                <input type="text" id="player2" placeholder="Player format: 'Nadal R.'" autocomplete="off">
+                            </div>
+                            <div class="input-container">
+                                <label for="court_surface">Court Surface:</label>
+                                <select id="court_surface">
+                                    <option value="Clay">Clay</option>
+                                    <option value="Grass">Grass</option>
+                                    <option value="Hard Court">Hard Court</option>
+                                </select>
+                            </div>
+                        
+                        </div>
+    
+                        <div id="player-stats-fields" style="display: none;">
+                            <div class="input-container">
+                                <label for="player_name">Player Name:</label>
+                                <input type="text" id="player_name" placeholder="Start typing..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="action-container">
+                            <button type="submit">Submit</button>
+                            <a href="https://github.com/Snomaskin/ATP-Winner-Predictor" target="_blank" class="github-icon">
+                                <img src="github-mark.png" alt="GitHub Repository" width="50" height="50">
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                <div class="speech-bubble" id="speech-bubble">
+                    <div id="speech-bubble-content"></div>
                 </div>
             </div>
-            <div class="content-container">
-                <form id="operation-form">
-                    <div id="winner-prediction-fields">
-                        <div class="input-container">
-                            <label for="player1">Player 1:</label>
-                            <input type="text" id="player1" name="player1">
-                        </div>
-                        <div class="input-container">
-                            <label for="player2">Player 2:</label>
-                            <input type="text" id="player2" name="player2">
-                        </div>
-                        <div class="instructions">
-                            <p>Input Format:<br>
-                                'LastName FirstNameInitial.' <br> 
-                                (e.g. 'Nadal R.')
-                            </p>
-                        </div>
-                        <div class="input-container">
-                            <label for="court_surface">Court Surface:</label>
-                            <input type="text" id="court_surface" name="court_surface">
-                        </div>
-                        <div class="instructions">
-                            <p>Court Surface Options:<br>
-                                'Hard Court', 'Grass', 'Clay'<br>
-                                (Input is case sensitive)
-                            </p>
-                        </div>
-                    </div>
-
-                    <div id="player-stats-fields" style="display: none;">
-                        <div class="input-container">
-                            <label for="player_name">Player Name:</label>
-                            <input type="text" id="player_name" name="player_name">
-                        </div>
-                        <div class="instructions">
-                            <p>Input Format:<br>
-                                'LastName FirstNameInitial.'<br>
-                                (e.g. 'Nadal R.')
-                            </p>
-                        </div>
-                    </div>
-                    <div class="action-container">
-                        <button type="submit">Submit</button>
-                        <a href="https://github.com/Snomaskin/ATP-Winner-Predictor" target="_blank" class="github-icon">
-                            <img src="github-mark.png" alt="GitHub Repository" width="50" height="50">
-                        </a>
-                    </div>
-                </form>
-            </div>
-            <div class="prediction-container">
-                <div id="prediction-result"></div>
-            </div>
-            <div class="player-stats-container">
-                <div id="player1-stats"></div>
-                <div id="player2-stats"></div>
-                <div id="player-stats-result"></div>
-            </div>
-            <div class="speech-bubble" id="speech-bubble">
-                <div id="speech-bubble-content"></div>
-            </div>
         </div>
-    </div>
-    <script src="script.js" defer></script>
+    <script src="mainFunctions.js" defer></script>
+    <script src="autoLookup.js" defer></script>
 </body>
 </html>
