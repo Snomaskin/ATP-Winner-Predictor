@@ -22,7 +22,7 @@ body {
 .overlay {
     background-color: rgba(255, 255, 255, 0.7);
     width: 350px; 
-    height: 520px; 
+    height: 470px; 
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     display: flex;
@@ -58,6 +58,35 @@ body {
 .input-container {
     margin-bottom: 15px;
     width: 60%;
+    position: relative;
+    display: inline-block;
+}
+.clear-button {
+    position: absolute;
+    top: 70%;
+    transform: translateY(-50%);
+    right: -25px; /* Position outside the right edge of the input field */
+    cursor: pointer;
+    color: #999;
+    font-weight: bold;
+    font-size: 12px;
+    display: none;
+
+    /* Circle background */
+    background-color: rgba(255, 255, 0, 0.5);
+    border-radius: 50%; 
+    width: 20px; 
+    height: 20px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.clear-button:hover {
+    background-color: rgba(255, 255, 0, 1); 
+}
+.input-container input:focus ~ .clear-button,
+.input-container input:not(:placeholder-shown) ~ .clear-button {
+    display: flex;
 }
 
 input[type="text"] {
