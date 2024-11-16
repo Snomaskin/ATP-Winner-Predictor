@@ -77,15 +77,15 @@ body {
     border-radius: 50%; 
     width: 20px; 
     height: 20px; 
-    display: flex;
     align-items: center;
     justify-content: center;
 }
+
 .clear-button:hover {
     background-color: rgba(255, 255, 0, 1); 
 }
 .input-container input:focus ~ .clear-button,
-.input-container input:not(:placeholder-shown) ~ .clear-button {
+.input-container input:not(:placeholder-shown):not(:placeholder-visible) ~ .clear-button {
     display: flex;
 }
 
@@ -185,6 +185,12 @@ img {
 }
 
 /* autoLookup styles */
+.suggestions-container {
+    display: none;
+    position: absolute;
+    width: 60%;
+}
+
 .suggestions-list {
     list-style-type: none;
     margin: 0;
