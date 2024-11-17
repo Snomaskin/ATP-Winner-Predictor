@@ -1,3 +1,5 @@
+import { showSpeechBubble, predictWinner, lookupPlayerStats } from './utils.js';
+
 /**
  * @returns {Promise<Array<Object>>}
  */
@@ -16,7 +18,7 @@ async function loadPlayerData() {
 
 /**
  * @param {string} csvData
- * @returns {Array<Object>} An array of player objects
+ * @returns {Array<Object>}
  */
 function parseCsvToJson(csvData){
     const rows = csvData.trim().split('\n');
@@ -33,8 +35,11 @@ function parseCsvToJson(csvData){
 }
 
 // Handler function for initializing the input fields. It's called when the DOM is loaded.
-async function setupInputFields(){
+async function initializeDynamicElements(){
+    setupFormSelect(); setupFormSubmit();
+
     const playerData = await loadPlayerData();
+
     if (!playerData) return; // Prevent function from continuing with 'null' return from a failed fetch.
 
     const inputFields = ['player1', 'player2', 'player_name'];
@@ -53,8 +58,41 @@ async function setupInputFields(){
     });
 }
 
+function setupFormSelect() {
+    document.querySelectorAll('input[name="form_selector"]').forEach((radio) => {
+        radio.addEventListener("change", function() {
+            if (this.value === "predict_winner") {
+                document.getElementById("winner-prediction-fields").style.display = "block";
+                document.getElementById("player-stats-fields").style.display = "none";
+            } else if (this.value === "lookup_stats") {
+                document.getElementById("winner-prediction-fields").style.display = "none";
+                document.getElementById("player-stats-fields").style.display = "block";
+            }
+        });
+    });
+}
+
+function setupFormSubmit() {
+    document.getElementById("form").addEventListener("submit", (formSubmit) => {
+        formSubmit.preventDefault(); showSpeechBubble('Loading...');
+
+    const selectedForm = document.querySelector('input[name="form_selector"]:checked').value;
+
+    if (selectedForm === "predict_winner") {
+        const player1 = document.getElementById("player1").value;
+        const player2 = document.getElementById("player2").value;
+        const courtSurface = document.getElementById("court_surface").value;
+        predictWinner(player1, player2, courtSurface);
+
+    } else if (selectedForm === "lookup_stats") {
+        const player = document.getElementById("player_name").value;
+        lookupPlayerStats(player);
+        }
+    });
+}
+
 /**
- * @param {HTMLInputElement} inputField - The input field to add the clear button to
+ * @param {HTMLInputElement} inputField
  */
 function setupClearInputButton(inputField) {
     const clearButton = inputField.parentNode.querySelector('.clear-button');
@@ -155,4 +193,5 @@ function appendPlayerSuggestions(players, inputField, suggestionsContainer, ul){
     });
 }
 
-document.addEventListener('DOMContentLoaded', setupInputFields);
+
+document.addEventListener('DOMContentLoaded', initializeDynamicElements);
