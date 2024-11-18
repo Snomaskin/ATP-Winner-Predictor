@@ -20,7 +20,7 @@ async function loadPlayerData() {
  * @param {string} csvData
  * @returns {Array<Object>}
  */
-function parseCsvToJson(csvData){
+function parseCsvToJson(csvData) {
     const rows = csvData.trim().split('\n');
     return rows.slice(1).map(row => { // Skip the first row (header)
         const [Player, Index, TotalWins] = row.split(',').map(item => item.trim());
@@ -34,8 +34,8 @@ function parseCsvToJson(csvData){
     });
 }
 
-// Handler function for initializing the input fields. It's called when the DOM is loaded.
-async function initializeDynamicElements(){
+// Handler function. It's called when the DOM is loaded.
+async function initializeDynamicElements() {
     setupFormSelect(); setupFormSubmit();
 
     const playerData = await loadPlayerData();
@@ -139,7 +139,7 @@ function setupPlayerSuggestions(inputField, suggestionsContainer, playerData) {
     });
 }
 
-function matchPlayers(searchTerm, playerData){
+function matchPlayers(searchTerm, playerData) {
     return playerData.filter(player => 
         player.searchName.includes(searchTerm.toLowerCase()) // searchName is lowercase for case-insensitive search
     ).slice(0,5); // Find first 5 matching players
@@ -173,7 +173,7 @@ function setupSuggestionsContainer(players, suggestionsContainer, inputField){
 * @param {HTMLElement} suggestionsContainer 
 * @param {HTMLUListElement} ul 
 */
-function appendPlayerSuggestions(players, inputField, suggestionsContainer, ul){
+function appendPlayerSuggestions(players, inputField, suggestionsContainer, ul) {
     players.forEach(player => {
         const li = document.createElement('li');
         li.className = 'suggestions-item';

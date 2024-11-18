@@ -2,7 +2,6 @@
  * @param {string} player1 
  * @param {string} player2 
  * @param {string} courtSurface 
- * @throws {Error} 
  */
 export function predictWinner(player1, player2, courtSurface) {
     try {    
@@ -12,15 +11,21 @@ export function predictWinner(player1, player2, courtSurface) {
             court_surface: courtSurface
         };
         const jsonData = JSON.stringify(formData);
-        fetchData("/predict_winner", jsonData);
-    } catch (clientError) {
-        showSpeechBubble(clientError.message);
-    }
+        fetchData("/predict_winner", jsonData)
+        .then(returnString => showSpeechBubble(returnString))
+        .catch((serverError) => {
+            showSpeechBubble(serverError.message);
+            console.log(`Server Error: ${serverError}`);
+        });
+        } catch (clientError) {
+            console.log(`Client Error: ${clientError}`);
+            showSpeechBubble(clientError.message);
+        }
 }
 
 /**
+ * 
  * @param {string} player - "LastName FirstInitial." format
- * @throws {Error} 
  */
 export function lookupPlayerStats(player) {
     try{
@@ -29,38 +34,17 @@ export function lookupPlayerStats(player) {
     };
     const jsonData = JSON.stringify(formData);
 
-    fetchData("/lookup_player_stats", jsonData);
+    fetchData("/lookup_player_stats", jsonData)
+    .then(returnString => showSpeechBubble(returnString))
+    .catch((serverError) => {
+        showSpeechBubble(serverError.message);
+        console.log(`Server Error: ${serverError}`);
+    });
     } catch (clientError) {
+        console.log(`Client Error: ${clientError}`);
         showSpeechBubble(clientError.message);
     }
 }
-
-/**
- * @param {string} endpoint 
- * @param {string} formData 
- * @returns {Promise<string>} 
- * @throws {Error} 
- */
-function fetchData(endpoint, formData){
-        const BASE_URL = "https://fastapi-iywl5fy4ka-lz.a.run.app";
-        fetch(BASE_URL + endpoint, {
-            method: "POST",
-            body: formData,
-            headers: {"Content-Type": "application/json"}
-        })
-        .then (response => {
-            if (response.status === 200)
-                return response.text();
-            else {
-                return response.text().then(invalidResponse => {
-                    invalidResponse = invalidResponse.replace('{"detail":"', '').replace('"}', ''); // Remove server error message prefix and suffix
-                        throw new Error(invalidResponse);
-                })
-            }
-        })
-        .then(returnString => showSpeechBubble(returnString))
-        .catch(serverError => showSpeechBubble(serverError.message));
-} 
 
 export function showSpeechBubble(message) {
     const bubble = document.getElementById('speech-bubble');
@@ -74,17 +58,56 @@ export function showSpeechBubble(message) {
 
 }
 
+/**
+ * @param {string} endpoint 
+ * @param {string} formData 
+ * @returns {Promise<string>} 
+ * @throws {Error} serverError
+ */
+const cache = new Map();
+function fetchData(endpoint, formData) {
+    const cacheKey = endpoint + formData;
+    const BASE_URL = "https://fastapi-iywl5fy4ka-lz.a.run.app";
+
+    if (cache.has(cacheKey)) {
+        return Promise.resolve(cache.get(cacheKey));
+    }
+
+    return fetch(BASE_URL + endpoint, {
+        method: "POST",
+        body: formData,
+        headers: {"Content-Type": "application/json"}
+    })
+    .then (response => {
+        if (response.status === 200) {
+            return response.text().then(returnString =>{
+                cache.set(cacheKey, returnString);
+                return returnString;
+            });
+        } else {
+            return response.text().then(invalidResponse => {
+                const errorMessage = JSON.parse(invalidResponse).detail;
+                const serverError = new Error(errorMessage);
+                serverError.isServerError = true;
+                    throw serverError;
+            });
+        }
+    });
+} 
+
 const ValidationUtils = {
     /**
      * Formats a player's name as "LastName FirstInitial."
      * @param {string} name 
      * @param {string} inputField 
      * @returns {string} 
-     * @throws {Error}
+     * @throws {Error} clientError
      */
     formatPlayerName(name, inputField) {
         if (!this.canFormatAsPlayerName(name)) {
-            throw new Error(`Invalid input for "${inputField}". Please follow the name format instructions.`)
+            const clientError = new Error(`Invalid input for "${inputField}". Please follow the name format instructions.`);
+            clientError.isClientError = true;
+            throw clientError
         }
 
         return name.trim().split(' ')
@@ -99,7 +122,6 @@ const ValidationUtils = {
             .join(" ");
     },
 
-    // Validate format: "LastName FirstInitial."
     canFormatAsPlayerName(input) {
         return input.trim()
         .length >= 3 && input.includes(' ') && /^[A-Za-z\s.]*$/.test(input);
