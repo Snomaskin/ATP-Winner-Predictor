@@ -85,7 +85,6 @@ function fetchData(endpoint, formData) {
         });
 }
 
-
 const ValidationUtils = {
     /**
      * Formats a player's name as "LastName FirstInitial."

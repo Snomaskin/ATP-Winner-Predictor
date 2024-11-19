@@ -74,7 +74,7 @@ function setupFormSelect() {
 
 function setupFormSubmit() {
     document.getElementById("form").addEventListener("submit", (formSubmit) => {
-        formSubmit.preventDefault(); displayLoader();
+        formSubmit.preventDefault(); loaderVisibility('showLoaderHideBubble');
 
         const selectedForm = document.querySelector('input[name="form_selector"]:checked').value;
 
@@ -97,21 +97,22 @@ export function showSpeechBubble(message) {
     bubbleContent.innerHTML = '';
     bubbleContent.innerText = message;
     bubble.style.display = 'block';
-    displayLoader();
+    loaderVisibility('hideLoader');
 
     bubble.addEventListener('click', () => {
         bubble.style.display = 'none';
     });
 }
 
-function displayLoader() {
+function loaderVisibility(mode = '') {
     const loader = document.getElementById('tennisLoader');
     const speechBubble = document.getElementById('speechBubble');
-    const bubbleComputedStyle = window.getComputedStyle(speechBubble);
-    if (bubbleComputedStyle.display === 'block') {
-        loader.style.display = 'none';
-    } else {
+
+    if (mode === 'showLoaderHideBubble') {
         loader.style.display = 'block';
+        speechBubble.style.display = 'none';
+    } else if (mode === 'hideLoader') {
+        loader.style.display = 'none';
     }
 }
 
