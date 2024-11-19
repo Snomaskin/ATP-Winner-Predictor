@@ -1,3 +1,5 @@
+import { showSpeechBubble } from './dynamic-content.js';
+
 /**
  * @param {string} player1 
  * @param {string} player2 
@@ -46,18 +48,6 @@ export function lookupPlayerStats(player) {
     }
 }
 
-export function showSpeechBubble(message) {
-    const bubble = document.getElementById('speech-bubble');
-    const bubbleContent = document.getElementById('speech-bubble-content');
-    bubbleContent.innerText = message;
-    bubble.style.display = 'block';
-
-    bubble.addEventListener('click', () => {
-        bubble.style.display = 'none';
-    });
-
-}
-
 /**
  * @param {string} endpoint 
  * @param {string} formData 
@@ -69,31 +59,32 @@ function fetchData(endpoint, formData) {
     const cacheKey = endpoint + formData;
     const BASE_URL = "https://fastapi-iywl5fy4ka-lz.a.run.app";
 
-    if (cache.has(cacheKey)) {
-        return Promise.resolve(cache.get(cacheKey));
-    }
-
-    return fetch(BASE_URL + endpoint, {
-        method: "POST",
-        body: formData,
-        headers: {"Content-Type": "application/json"}
-    })
-    .then (response => {
-        if (response.status === 200) {
-            return response.text().then(returnString =>{
-                cache.set(cacheKey, returnString);
-                return returnString;
-            });
-        } else {
-            return response.text().then(invalidResponse => {
-                const errorMessage = JSON.parse(invalidResponse).detail;
-                const serverError = new Error(errorMessage);
-                serverError.isServerError = true;
-                    throw serverError;
-            });
+        if (cache.has(cacheKey)) {
+            return Promise.resolve(cache.get(cacheKey));
         }
-    });
-} 
+
+        return fetch(BASE_URL + endpoint, {
+            method: "POST",
+            body: formData,
+            headers: { "Content-Type": "application/json" },
+        })
+        .then((response) => {
+            if (response.status === 200) {
+                return response.text().then((returnString) => {
+                    cache.set(cacheKey, returnString);
+                    return returnString;
+                });
+            } else {
+                return response.text().then((invalidResponse) => {
+                    const errorMessage = JSON.parse(invalidResponse).detail;
+                    const serverError = new Error(errorMessage);
+                    serverError.isServerError = true;
+                    throw serverError;
+                });
+            }
+        });
+}
+
 
 const ValidationUtils = {
     /**

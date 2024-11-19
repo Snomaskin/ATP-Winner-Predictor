@@ -1,4 +1,4 @@
-import { showSpeechBubble, predictWinner, lookupPlayerStats } from './utils.js';
+import { predictWinner, lookupPlayerStats } from './utils.js';
 
 /**
  * @returns {Promise<Array<Object>>}
@@ -74,21 +74,45 @@ function setupFormSelect() {
 
 function setupFormSubmit() {
     document.getElementById("form").addEventListener("submit", (formSubmit) => {
-        formSubmit.preventDefault(); showSpeechBubble('Loading...');
+        formSubmit.preventDefault(); displayLoader();
 
-    const selectedForm = document.querySelector('input[name="form_selector"]:checked').value;
+        const selectedForm = document.querySelector('input[name="form_selector"]:checked').value;
 
-    if (selectedForm === "predict_winner") {
-        const player1 = document.getElementById("player1").value;
-        const player2 = document.getElementById("player2").value;
-        const courtSurface = document.getElementById("court_surface").value;
-        predictWinner(player1, player2, courtSurface);
+        if (selectedForm === "predict_winner") {
+            const player1 = document.getElementById("player1").value;
+            const player2 = document.getElementById("player2").value;
+            const courtSurface = document.getElementById("court_surface").value;
+            predictWinner(player1, player2, courtSurface);
 
-    } else if (selectedForm === "lookup_stats") {
-        const player = document.getElementById("player_name").value;
-        lookupPlayerStats(player);
-        }
+        } else if (selectedForm === "lookup_stats") {
+            const player = document.getElementById("player_name").value;
+            lookupPlayerStats(player);
+            }
     });
+}
+
+export function showSpeechBubble(message) {
+    const bubble = document.getElementById('speechBubble');
+    const bubbleContent = document.getElementById('speechBubbleContent');
+    bubbleContent.innerHTML = '';
+    bubbleContent.innerText = message;
+    bubble.style.display = 'block';
+    displayLoader();
+
+    bubble.addEventListener('click', () => {
+        bubble.style.display = 'none';
+    });
+}
+
+function displayLoader() {
+    const loader = document.getElementById('tennisLoader');
+    const speechBubble = document.getElementById('speechBubble');
+    const bubbleComputedStyle = window.getComputedStyle(speechBubble);
+    if (bubbleComputedStyle.display === 'block') {
+        loader.style.display = 'none';
+    } else {
+        loader.style.display = 'block';
+    }
 }
 
 /**
@@ -178,11 +202,10 @@ function appendPlayerSuggestions(players, inputField, suggestionsContainer, ul) 
         const li = document.createElement('li');
         li.className = 'suggestions-item';
         // Use the correctly capitalized player name for display:
-        li.innerHTML = `
-            <div class="player-name">${player.Player}<br>
-                Wins: ${player.TotalWins}
-            </div>
-        `;
+        li.innerHTML = `<div class="player-name">${player.Player}<br>
+        Wins: ${player.TotalWins}
+        </div>`;
+
         li.addEventListener('click', () => {
             inputField.value = player.Player; // Use the correctly capitalized player name for input
             suggestionsContainer.style.display = 'none';
