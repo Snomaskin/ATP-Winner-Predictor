@@ -1,4 +1,4 @@
-import { predictWinner, lookupPlayerStats } from './utils.js';
+import { predictWinner, lookupPlayerStats, ValidationUtils } from './utils.js';
 
 /**
  * @returns {Promise<Array<Object>>}
@@ -44,15 +44,15 @@ async function initializeDynamicElements() {
 
     const inputFields = ['player1', 'player2', 'player_name'];
 
-    // Setup auto-lookup and clear button for each input field:  
+    // Setup for input fields:  
     inputFields.forEach(fieldId => {
         const inputField = document.getElementById(fieldId);
-        
         const suggestionsContainer = document.createElement('div');
         suggestionsContainer.id = `${fieldId}-suggestion`;
         suggestionsContainer.classList.add('suggestions-container');
 
-        setupClearInputButton(inputField); // Append clear button to the input field
+        setupInputValidationStyles(inputField);
+        setupClearInputButton(inputField);
         inputField.insertAdjacentElement('afterend', suggestionsContainer);
         setupPlayerSuggestions(inputField, suggestionsContainer, playerData);
     });
@@ -61,12 +61,22 @@ async function initializeDynamicElements() {
 function setupFormSelect() {
     document.querySelectorAll('input[name="form_selector"]').forEach((radio) => {
         radio.addEventListener("change", function() {
+            const predictionContainer = document.getElementById("winner-prediction-fields");
+            const statsContainer = document.getElementById("player-stats-fields");
+            const predictionInput = document.querySelectorAll("#winner-prediction-fields input");
+            const statsInput = document.querySelectorAll("#player-stats-fields input");
+
             if (this.value === "predict_winner") {
-                document.getElementById("winner-prediction-fields").style.display = "block";
-                document.getElementById("player-stats-fields").style.display = "none";
+                predictionContainer.style.display = "block";
+                statsContainer.style.display = "none";
+                predictionInput.forEach(input => input.required = true);
+                statsInput.forEach(input => input.required = false);
+
             } else if (this.value === "lookup_stats") {
-                document.getElementById("winner-prediction-fields").style.display = "none";
-                document.getElementById("player-stats-fields").style.display = "block";
+                predictionContainer.style.display = "none";
+                statsContainer.style.display = "block";
+                predictionInput.forEach(input => input.required = false);
+                statsInput.forEach(input => input.required = true);
             }
         });
     });
@@ -137,6 +147,16 @@ function setupClearInputButton(inputField) {
     });
   }
 
+function setupInputValidationStyles(inputField) {
+    ValidationUtils.registerValidationCallback(inputField.id, (isValid) => {
+        if (!isValid) {
+            inputField.classList.add('invalid');
+        } else {
+            inputField.classList.remove('invalid');
+        }
+    });
+}
+
 /**
  * Sets up the auto-lookup functionality for a given input field.
  * @param {HTMLInputElement} inputField - The input field to monitor for changes
@@ -152,14 +172,12 @@ function setupPlayerSuggestions(inputField, suggestionsContainer, playerData) {
 
         debounceTimeout = setTimeout(() => {
             const searchTerm = inputField.value;
-
             if (searchTerm.length < 2) {
                 suggestionsContainer.style.display = 'none';
                 return;
             }
-            
             const matchingPlayers = matchPlayers(searchTerm, playerData);
-            setupSuggestionsContainer(matchingPlayers, suggestionsContainer, inputField);
+            setupSuggestionsContainer(matchingPlayers, inputField, suggestionsContainer);
         });
     });
 }
@@ -171,13 +189,13 @@ function matchPlayers(searchTerm, playerData) {
 }
 
 /**
- * Updates the player suggestions display based on the matching players. 
+ * Updates the player suggestionsContainer with matching players. 
  * @param {Array<Object>} players
  * @param {HTMLDivElement} suggestionsContainer
  * @param {HTMLInputElement} inputField
  */
-function setupSuggestionsContainer(players, suggestionsContainer, inputField){
-    if (players.length === 0){
+function setupSuggestionsContainer(matchingPlayers, inputField, suggestionsContainer){
+    if (matchingPlayers.length === 0){
         suggestionsContainer.style.display = 'none';
         return;
     }
@@ -186,7 +204,7 @@ function setupSuggestionsContainer(players, suggestionsContainer, inputField){
     const ul = document.createElement('ul');
     ul.className = 'suggestions-list';
 
-    appendPlayerSuggestions(players, inputField, suggestionsContainer, ul);
+    appendPlayerSuggestions(matchingPlayers, inputField, suggestionsContainer, ul);
 
     suggestionsContainer.appendChild(ul);
     suggestionsContainer.style.display = 'block';
@@ -198,8 +216,8 @@ function setupSuggestionsContainer(players, suggestionsContainer, inputField){
 * @param {HTMLElement} suggestionsContainer 
 * @param {HTMLUListElement} ul 
 */
-function appendPlayerSuggestions(players, inputField, suggestionsContainer, ul) {
-    players.forEach(player => {
+function appendPlayerSuggestions(matchingPlayers, inputField, suggestionsContainer, ul) {
+    matchingPlayers.forEach(player => {
         const li = document.createElement('li');
         li.className = 'suggestions-item';
         // Use the correctly capitalized player name for display:

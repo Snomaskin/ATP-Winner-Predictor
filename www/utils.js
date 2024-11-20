@@ -8,8 +8,8 @@ import { showSpeechBubble } from './dynamic-content.js';
 export function predictWinner(player1, player2, courtSurface) {
     try {    
         const formData = {
-            player1: ValidationUtils.formatPlayerName(player1, "Player 1"),
-            player2: ValidationUtils.formatPlayerName(player2, "Player 2"),
+            player1: ValidationUtils.formatPlayerName(player1, "player1", "Player 1"),
+            player2: ValidationUtils.formatPlayerName(player2, "player2", "Player 2"),
             court_surface: courtSurface
         };
         const jsonData = JSON.stringify(formData);
@@ -32,7 +32,7 @@ export function predictWinner(player1, player2, courtSurface) {
 export function lookupPlayerStats(player) {
     try{
     const formData = {
-        player: ValidationUtils.formatPlayerName(player, "Player Name")
+        player: ValidationUtils.formatPlayerName(player, "player_name", "Player Name")
     };
     const jsonData = JSON.stringify(formData);
 
@@ -85,17 +85,27 @@ function fetchData(endpoint, formData) {
         });
 }
 
-const ValidationUtils = {
+export const ValidationUtils = {
+    _validationCallbacks: new Map(),
+
     /**
      * Formats a player's name as "LastName FirstInitial."
      * @param {string} name 
-     * @param {string} inputField 
+     * @param {string} inputFieldId 
+     * @param {string} displayString 
      * @returns {string} 
      * @throws {Error} clientError
      */
-    formatPlayerName(name, inputField) {
-        if (!this.canFormatAsPlayerName(name)) {
-            const clientError = new Error(`Invalid input for "${inputField}". Please follow the name format instructions.`);
+    formatPlayerName(name, inputFieldId, displayString) {
+        const isValid = this.canFormatAsPlayerName(name);
+
+        const callback = this._validationCallbacks.get(inputFieldId);
+        if (callback) {
+            callback(isValid);
+        }
+
+        if (!isValid) {
+            const clientError = new Error(`Invalid input for "${displayString}". Please follow the name format instructions.`);
             clientError.isClientError = true;
             throw clientError
         }
@@ -113,7 +123,12 @@ const ValidationUtils = {
     },
 
     canFormatAsPlayerName(input) {
-        return input.trim()
-        .length >= 3 && input.includes(' ') && /^[A-Za-z\s.]*$/.test(input);
+        return  input.trim().length >= 3 &&
+                input.includes(' ') && 
+                /^[A-Za-z\s.-]*$/.test(input);
+    },
+
+    registerValidationCallback(inputFieldId, callback) {
+        this._validationCallbacks.set(inputFieldId, callback);
     },
 }
