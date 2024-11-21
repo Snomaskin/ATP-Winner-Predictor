@@ -1,4 +1,5 @@
-import { predictWinner, lookupPlayerStats, ValidationUtils } from './utils.js';
+import { predictWinner, lookupPlayerStats } from './comms.js';
+import { ValidationUtils } from './utils.js';
 
 /**
  * @returns {Promise<Array<Object>>}

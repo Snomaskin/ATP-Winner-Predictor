@@ -1,89 +1,4 @@
-import { showSpeechBubble } from './dynamic-content.js';
-
-/**
- * @param {string} player1 
- * @param {string} player2 
- * @param {string} courtSurface 
- */
-export function predictWinner(player1, player2, courtSurface) {
-    try {    
-        const formData = {
-            player1: ValidationUtils.formatPlayerName(player1, "player1", "Player 1"),
-            player2: ValidationUtils.formatPlayerName(player2, "player2", "Player 2"),
-            court_surface: courtSurface
-        };
-        const jsonData = JSON.stringify(formData);
-        fetchData("/predict_winner", jsonData)
-        .then(returnString => showSpeechBubble(returnString))
-        .catch((serverError) => {
-            showSpeechBubble(serverError.message);
-            console.log(`Server Error: ${serverError}`);
-        });
-        } catch (clientError) {
-            console.log(`Client Error: ${clientError}`);
-            showSpeechBubble(clientError.message);
-        }
-}
-
-/**
- * 
- * @param {string} player - "LastName FirstInitial." format
- */
-export function lookupPlayerStats(player) {
-    try{
-    const formData = {
-        player: ValidationUtils.formatPlayerName(player, "player_name", "Player Name")
-    };
-    const jsonData = JSON.stringify(formData);
-
-    fetchData("/lookup_player_stats", jsonData)
-    .then(returnString => showSpeechBubble(returnString))
-    .catch((serverError) => {
-        showSpeechBubble(serverError.message);
-        console.log(`Server Error: ${serverError}`);
-    });
-    } catch (clientError) {
-        console.log(`Client Error: ${clientError}`);
-        showSpeechBubble(clientError.message);
-    }
-}
-
-/**
- * @param {string} endpoint 
- * @param {string} formData 
- * @returns {Promise<string>} 
- * @throws {Error} serverError
- */
-const cache = new Map();
-function fetchData(endpoint, formData) {
-    const cacheKey = endpoint + formData;
-    const BASE_URL = "https://fastapi-iywl5fy4ka-lz.a.run.app";
-
-        if (cache.has(cacheKey)) {
-            return Promise.resolve(cache.get(cacheKey));
-        }
-
-        return fetch(BASE_URL + endpoint, {
-            method: "POST",
-            body: formData,
-            headers: { "Content-Type": "application/json" },
-        })
-        .then((response) => {
-            if (response.status === 200) {
-                return response.text().then((returnString) => {
-                    cache.set(cacheKey, returnString);
-                    return returnString;
-                });
-            } else {
-                return response.text().then((invalidResponse) => {
-                    const errorMessage = JSON.parse(invalidResponse).detail;
-                    const serverError = new Error(errorMessage);
-                    serverError.isServerError = true;
-                    throw serverError;
-                });
-            }
-        });
-}
+import { CONFIG } from './config.js';
 
 export const ValidationUtils = {
     _validationCallbacks: new Map(),
@@ -125,10 +40,33 @@ export const ValidationUtils = {
     canFormatAsPlayerName(input) {
         return  input.trim().length >= 3 &&
                 input.includes(' ') && 
-                /^[A-Za-z\s.-]*$/.test(input);
+                CONFIG.VALIDATION.NAME_REGEX.test(input);
     },
 
     registerValidationCallback(inputFieldId, callback) {
         this._validationCallbacks.set(inputFieldId, callback);
     },
 }
+
+export const RateLimiter = {
+    requests: new Map(), // Endpoint -> [timestamp]
+    maxRequests: 10,      
+    timeWindow: 60000,   
+    
+    checkLimit(endpoint) {
+        const now = Date.now();
+        const recentRequests = this.requests.get(endpoint) || [];
+        
+        // Remove old requests
+        const validRequests = recentRequests.filter(
+            timeStamp => now - timeStamp < this.timeWindow
+        );
+        
+        if (validRequests.length >= this.maxRequests) {
+            throw new Error('Too many requests. Please wait before trying again.');
+        }
+
+        validRequests.push(now);
+        this.requests.set(endpoint, validRequests);
+    }
+};
