@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const {checkLimit} = require ('./rate-limiter')
 
 const app = express();
 app.use(express.json());
@@ -7,6 +8,9 @@ app.use(express.json());
 
 app.post('*', async (req, res, next) => {
     try {
+        const clientKey = req.ip;
+        const endpoint = req.path;
+
         const response = await axios({
             method:req.method, 
             url: `http://localhost:8080${req.path}`,
@@ -14,18 +18,20 @@ app.post('*', async (req, res, next) => {
             headers: {'content-type': 'application/json'}
         });
         
-        res.fastapiResponse = response;
+        res.middlewareResponse = response;
+        await checkLimit(clientKey, endpoint);
+        
         next();
     } catch (error) {
-        res.status(error.response?.status || 500).send(error.message);
+        res.status(error.middlewareResponse?.status || 429).send(error.message);
     }
 });
 
 app.use(async (req, res) => {
-    if (res.fastapiResponse) {
-        res .status(res.fastapiResponse.status)
-            .set(res.fastapiResponse.headers)
-            .send(res.fastapiResponse.data);
+    if (res.middlewareResponse) {
+        res .status(res.middlewareResponse.status)
+            .set(res.middlewareResponse.headers)
+            .send(res.middlewareResponse.data);
     } else {
         res.status(500).send('Internal Server Error');
     }
