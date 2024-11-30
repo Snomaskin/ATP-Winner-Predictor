@@ -1,65 +1,8 @@
 import { predictWinner, lookupPlayerStats } from './comms.js';
 import { ValidationUtils } from './utils.js';
 
-/**
- * @returns {Promise<Array<Object>>}
- */
-async function loadPlayerData() {
-    const PLAYERS_CSV_URL = "player_index_df.csv";
 
-    try {
-        const fetchCSV = await fetch(PLAYERS_CSV_URL);
-        const csvData = await fetchCSV.text();
-        return parseCsvToJson(csvData);
-    } catch (error) {
-        console.error('Error loading player data:', error);
-        return null;
-    }
-}
-
-/**
- * @param {string} csvData
- * @returns {Array<Object>}
- */
-function parseCsvToJson(csvData) {
-    const rows = csvData.trim().split('\n');
-    return rows.slice(1).map(row => { // Skip the first row (header)
-        const [Player, Index, TotalWins] = row.split(',').map(item => item.trim());
-        // 'searchName' for lookup and 'Player' for display:
-        return {
-            Player,
-            Index: parseInt(Index),
-            TotalWins: parseInt(TotalWins),
-            searchName: Player.toLowerCase()
-        }
-    });
-}
-
-// Handler function. It's called when the DOM is loaded.
-async function initializeDynamicElements() {
-    setupFormSelect(); setupFormSubmit();
-
-    const playerData = await loadPlayerData();
-
-    if (!playerData) return; // Prevent function from continuing with 'null' return from a failed fetch.
-
-    const inputFields = ['player1', 'player2', 'player_name'];
-
-    // Setup for input fields:  
-    inputFields.forEach(fieldId => {
-        const inputField = document.getElementById(fieldId);
-        const suggestionsContainer = document.createElement('div');
-        suggestionsContainer.id = `${fieldId}-suggestion`;
-        suggestionsContainer.classList.add('suggestions-container');
-
-        setupInputValidationStyles(inputField);
-        setupClearInputButton(inputField);
-        inputField.insertAdjacentElement('afterend', suggestionsContainer);
-        setupPlayerSuggestions(inputField, suggestionsContainer, playerData);
-    });
-}
-
-function setupFormSelect() {
+export function setupFormSelect() {
     document.querySelectorAll('input[name="form_selector"]').forEach((radio) => {
         radio.addEventListener("change", function() {
             const predictionContainer = document.getElementById("winner-prediction-fields");
@@ -83,7 +26,7 @@ function setupFormSelect() {
     });
 }
 
-function setupFormSubmit() {
+export function setupFormSubmit() {
     document.getElementById("form").addEventListener("submit", (formSubmit) => {
         formSubmit.preventDefault(); loaderVisibility('showLoaderHideBubble');
 
@@ -130,25 +73,25 @@ function loaderVisibility(mode = '') {
 /**
  * @param {HTMLInputElement} inputField
  */
-function setupClearInputButton(inputField) {
+export function setupClearInputButton(inputField) {
     const clearButton = inputField.parentNode.querySelector('.clear-button');
     clearButton.style.display = 'none';
    
     function toggleClearButtonVisibility() {
-        clearButton.style.display = inputField.value ? 'flex' : 'none'; // Show clear button if input field has a value
+        clearButton.style.display = inputField.value ? 'flex' : 'none'; 
     }
   
     inputField.addEventListener('input', toggleClearButtonVisibility);
     inputField.addEventListener('blur', toggleClearButtonVisibility);
     inputField.addEventListener('focus', toggleClearButtonVisibility);
   
-    clearButton.addEventListener('click', () => { // Clear the input field and focus on it
+    clearButton.addEventListener('click', () => { 
       inputField.value = '';
       inputField.focus();
     });
   }
 
-function setupInputValidationStyles(inputField) {
+export function setupInputValidationStyles(inputField) {
     ValidationUtils.registerValidationCallback(inputField.id, (isValid) => {
         if (!isValid) {
             inputField.classList.add('invalid');
@@ -164,23 +107,16 @@ function setupInputValidationStyles(inputField) {
  * @param {HTMLDivElement} suggestionsContainer - The container for displaying suggestions
  * @param {Array<Object>} playerData - An array of player objects
  */
-function setupPlayerSuggestions(inputField, suggestionsContainer, playerData) {
-    // Debounce the search to make sure the function is only called for the last keystroke
-    let debounceTimeout;
-
+export function setupPlayerSuggestions(inputField, suggestionsContainer, playerData) {
     inputField.addEventListener('input', () => {
-        clearTimeout(debounceTimeout);
-
-        debounceTimeout = setTimeout(() => {
-            const searchTerm = inputField.value;
-            if (searchTerm.length < 2) {
-                suggestionsContainer.style.display = 'none';
-                return;
-            }
-            const matchingPlayers = matchPlayers(searchTerm, playerData);
-            setupSuggestionsContainer(matchingPlayers, inputField, suggestionsContainer);
+        const searchTerm = inputField.value;
+        if (searchTerm.length < 2) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+        const matchingPlayers = matchPlayers(searchTerm, playerData);
+        setupSuggestionsContainer(matchingPlayers, inputField, suggestionsContainer);
         });
-    });
 }
 
 function matchPlayers(searchTerm, playerData) {
@@ -235,6 +171,3 @@ function appendPlayerSuggestions(matchingPlayers, inputField, suggestionsContain
         ul.appendChild(li);
     });
 }
-
-
-document.addEventListener('DOMContentLoaded', initializeDynamicElements);
