@@ -15,7 +15,7 @@ export function predictWinner(player1, player2, courtSurface) {
             court_surface: courtSurface
         };
         const jsonData = JSON.stringify(formData);
-        fetchData("/predict_winner", jsonData)
+        fetchData(CONFIG.ENDPOINTS.WINNER_PREDICTION, jsonData)
         .then(returnString => showSpeechBubble(returnString))
         .catch((serverError) => {
             showSpeechBubble(serverError.message);
@@ -32,13 +32,13 @@ export function predictWinner(player1, player2, courtSurface) {
  * @param {string} player - "LastName FirstInitial." format
  */
 export function lookupPlayerStats(player) {
-    try{
+    try {
     const formData = {
         player: ValidationUtils.formatPlayerName(player, "player_name", "Player Name")
     };
     const jsonData = JSON.stringify(formData);
 
-    fetchData("/lookup_player_stats", jsonData)
+    fetchData(CONFIG.ENDPOINTS.STATS_LOOKUP, jsonData)
     .then(returnString => showSpeechBubble(returnString))
     .catch((serverError) => {
         showSpeechBubble(serverError.message);
@@ -57,36 +57,35 @@ export function lookupPlayerStats(player) {
  * @throws {Error} serverError
  */
 const cache = new Map();
-function fetchData(endpoint, formData) {
+async function fetchData(endpoint, formData) {
     const cacheKey = endpoint + formData;
 
-        if (cache.has(cacheKey)) {
-            return Promise.resolve(cache.get(cacheKey));
-        }
-        try{
-            RateLimiter.checkLimit(endpoint);
-            return fetch(CONFIG.API.BASE_URL + endpoint, {
-                method: "POST",
-                body: formData,
-                headers: { "Content-Type": "application/json" },
-        })
-            .then((response) => {
-                if (response.status === 200) {
-                    return response.text().then((returnString) => {
-                        cache.set(cacheKey, returnString);
-                        return returnString;
-                    });
-                } else {
-                    return response.text().then((invalidResponse) => {
-                        const errorMessage = JSON.parse(invalidResponse).detail;
-                        const serverError = new Error(errorMessage);
-                        serverError.isServerError = true;
-                        throw serverError;
-                    });
-                }
-            });
+    if (cache.has(cacheKey)) {
+        return Promise.resolve(cache.get(cacheKey));
+    }
+    try {
+        RateLimiter.checkLimit(endpoint);
+        response = await fetch(CONFIG.API.BASE_URL + endpoint, {
+            ...CONFIG.FETCH_OPTIONS,
+            body: formData,
+        });
+        return handleResponse(response, cacheKey);
     } catch (error) {
         console.log(`Client Error: ${error}`);
         throw error;
     }
+}
+
+async function handleResponse(response, cacheKey) {
+    if (response.status === 200) {
+        const returnString = await response.text();
+        cache.set(cacheKey, returnString);
+        return returnString;
+    } else {
+        const invalidResponse = await response.text();
+        const errorMessage = JSON.parse(invalidResponse).detail;
+        const serverError = new Error(errorMessage);
+        serverError.isServerError = true;
+        throw serverError;
+        };
 }
