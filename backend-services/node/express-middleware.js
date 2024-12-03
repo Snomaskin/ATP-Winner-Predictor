@@ -1,40 +1,36 @@
 const express = require('express');
 const axios = require('axios');
-const {checkLimit} = require ('./rate-limiter')
+const { checkLimit } = require('./rate-limiter')
+const { logValidRequest, logInvalidRequest } = require('./logger-config')
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+app.post('*', async (req, res) => {
+    const startTime = Date.now();
+    console.log(req.body);
 
-app.post('*', async (req, res, next) => {
     try {
         const clientKey = req.ip;
         const endpoint = req.path;
+        await checkLimit(clientKey, endpoint);
 
-        const response = await axios({
+        const response = await axios({ // Axios calls the server
             method:req.method, 
             url: `http://localhost:8080${req.path}`,
             data: req.body, 
-            headers: {'content-type': 'application/json'}
+            headers: { "Content-Type": "application/json" }        
         });
-        
-        res.middlewareResponse = response;
-        await checkLimit(clientKey, endpoint);
-        
-        next();
+
+        logValidRequest(req, res, startTime);        
+        res.status(response.status).send(response.data);
+
     } catch (error) {
-        res.status(error.middlewareResponse?.status || 429).send(error.message);
+        logInvalidRequest(req, res, startTime);
+        res.status(error.response.status).send(error.response.message);
     }
 });
 
-app.use(async (req, res) => {
-    if (res.middlewareResponse) {
-        res .status(res.middlewareResponse.status)
-            .set(res.middlewareResponse.headers)
-            .send(res.middlewareResponse.data);
-    } else {
-        res.status(500).send('Internal Server Error');
-    }
-});
 
 app.listen(3000, () => console.log('Server running on port 3000'));
