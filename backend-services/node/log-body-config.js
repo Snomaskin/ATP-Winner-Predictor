@@ -16,11 +16,11 @@ const logValidRequest = (req, res, startTime) => {
   });
 
 }
-
+x
 const logInvalidRequest = (req, res, startTime) => {
   const duration = Date.now() - startTime;
 
-  logger.info('API Error', {
+  logger.error('API Error', {
     method: req.method,
     path: req.path.split('/').pop(),
     statusCode: res.statusCode,
