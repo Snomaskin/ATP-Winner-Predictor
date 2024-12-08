@@ -8,31 +8,55 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from hashlib import sha256
 import re
 import pandas as pd
+import hashlib
+
 
 
 '''
-A web scraper to scrape tennis match data from www.flashscore.com and store it in an SQLite database.
+A web scraper to get tennis match data from www.flashscore.com and store it in an Sqlite database.
 Currently it is only tuned for men's ATP singles.
 There's a clickable button on each event result page to load more matches. 
 I have not been able to get Selenium to click this.
 
 TennisScraper:
-First launches starting page with Selenium webdriver. 
+Launches starting page with Selenium webdriver. 
 From there it goes through the whole event list (limit this for testing) and clicks through the archive list for each
-event to get to the match data.  
-Getting Selenium to select the right DOMs was tricky and took a lot of trial and error.
+event to get to the match data. 
+Scraper requires 'chromedriver.exe' to work.
 
 DataStorage:
-Collects the scraped data and stores it in a local database.
+Collects the scraped data and stores it in a local Sqlite database.
 
 DataCleanup:
 The scraped data contains a lot of old match data and all entries are missing year in MatchDate (it's in EventID).
 This class of methods takes care of all that so that we can delete all old data we don't need for prediction.
-I have also looked up the court surface for each tournament (manually) so this data also can be used for prediction.
+Requires 'event_courtsurfaces.csv'.
+
+DataEncoding:
+Encodes the data for modelling.
+
+
+Final outputs: model_df.csv, player_index.csv, court_surface_index.csv
+
 '''
 
 
-class TennisScraper:
+def run():
+    scrape_data = TennisMatchScraper()
+    scrape_data.process_matches()
+
+    clean_data = DataCleanup()
+    # Give pipeline the starting year to filter match data depending on how the scraping turned out.
+    clean_data.pipeline(1993)
+
+    encode_data = PrepareDataframe(auto_run=True)
+    encode_data()
+
+if __name__ == "__main__":
+    run()
+
+
+class TennisMatchScraper:
     def __init__(self):
         self.driver = self.launch_browser()
 
@@ -44,6 +68,15 @@ class TennisScraper:
         driver.get('https://www.flashscore.com/tennis/')
 
         return driver
+    
+    def process_matches(self, all_source_code: list[str]):
+        database = DataStorage()
+        db_connect = database.database_connect()
+        # The source code of each event is fed to the scraper and the extracted data is added to the database.
+        for event in all_source_code:
+            event_matches = self.scraper(event)
+            if event_matches:
+                database.append_data(db_connect, event_matches)
 
     def get_event_archive_links(self):
         menu = WebDriverWait(self.driver, 10).until(
@@ -64,7 +97,6 @@ class TennisScraper:
         return event_archive_links
 
     def get_link_list(self, event_archive_links: list[str]) -> list[str]:
-        # List to store the links that will be scraped.
         scraper_link_list = []
 
         for link in event_archive_links[:2]:
@@ -115,15 +147,6 @@ class TennisScraper:
             self.driver.execute_script("arguments[0].click();", more_matches)
         except NoSuchElementException as element:
             print(f'No clickable element for {element}')
-
-    def process_matches(self, all_source_code: list[str]):
-        database = DataStorage()
-        db_connect = database.database_connect()
-        # The source code of each event is fed to the scraper and the extracted data is added to the database.
-        for event in all_source_code:
-            event_matches = self.scraper(event)
-            if event_matches:
-                database.append_data(db_connect, event_matches)
 
     def scraper(self, event_source_code: str) -> list[dict[str, str]]:
         soup = BeautifulSoup(event_source_code, 'html.parser')
@@ -248,6 +271,13 @@ class DataCleanup:
     def __del__(self):
         self.conn.close()
 
+    def pipeline(self, year_cutoff):
+        self.append_year_to_match_date()
+        self.delete_where_no_year()
+        self.remove_before_year(year_cutoff)
+        self.create_tournament_table()
+        self.append_court_surface
+
     def append_year_to_match_date(self):
         self.cursor.execute("SELECT EventID, MatchID, MatchDate FROM MensATPSingles")
         rows = self.cursor.fetchall()
@@ -357,3 +387,177 @@ class DataCleanup:
         self.conn.commit()
 
 
+'''
+PrepareDataframe:
+Takes a dataset (format below) and endcodes it's contents for modelling.
+
+Input: data.db
+    TABLE "MensATPSingles" (
+                EventID TEXT,
+                MatchID TEXT PRIMARY KEY,
+                MatchDate TEXT, 
+                Player1 TEXT,
+                Player1Country TEXT,
+                Player2 TEXT, 
+                Player2Country TEXT,
+                Winner TEXT,
+                Loser TEXT)
+
+Output: model_df.csv, player_index.csv, court_surface_index.csv
+'''
+
+
+class PrepareDataframe:
+    def __init__(self, auto_run=False):
+        self.conn = sqlite3.connect('data.db')
+        self.cursor = self.conn.cursor()
+        self.cursor.execute('SELECT * FROM MensATPSingles')
+        results = self.cursor.fetchall()
+        columns = [col[0] for col in self.cursor.description]
+        self.df = pd.DataFrame(results, columns=columns)
+        self.conn.close()
+
+        if auto_run:
+            self.prepare_dataframe()
+        
+    def prepare_dataframe(self):
+        self.df = self.create_binary_target()
+        self.df = self.create_player_index(self.df)
+        self.df = self.winner_hash(self.df)
+        self.df = self.create_headtohead(self.df)
+        player_index_df = pd.read_csv('player_index_df.csv')
+        self.df = self.merge_total_wins(self.df, player_index_df)
+        self.df = self.encode_df_court_surface(self.df)
+        self.export_dataframe(self.df)
+
+    def create_binary_target(self):
+        # Drop column not needed for the prediction algorithm.
+        columns_drop = ['EventID', 'Player1Country', 'Player2Country', 'MatchDate', 'EventName']
+        sub_df = self.df.drop(columns=columns_drop)
+
+        sub_df['Target'] = 0
+        # Iterate over each row in the DataFrame & assign target 1/0 based on which player won.
+        # 1 = Player1 win
+        # 0 = Player2 win
+        for index, row in self.df.iterrows():
+            if row['Winner'] == row['Player1']:
+                sub_df.at[index, 'Target'] = 1
+            elif row['Winner'] == row['Player2']:
+                sub_df.at[index, 'Target'] = 0
+        sub_df.drop(columns=['Winner', 'Loser'], inplace=True)
+
+        return sub_df
+
+    def calc_headtohead(self, df):
+        # Variable to measure total wins/losses in matchup between Player1 and Player2.
+        df['HeadToHead'] = 0
+        for index, row in df.iterrows():
+            # Calculate instances of 'Player1' vs 'Player2' where 'Target' = 1.
+            player1_wins = (df[(df['Player1'] == row['Player1']) & (df['Player2'] == row['Player2'])][
+                                'Target'] == 1).sum()
+            # Same as above but in reverse. (I know it's a bit confusing that df['Player1'] is row[PLayer2]).
+            # I have another way of doing this further down which might be easier to follow.
+            df.at[index, 'HeadToHead'] = player1_wins - ((df[(df['Player1'] == row['Player2']) & (
+                    df['Player2'] == row['Player1'])]['Target'] == 1).sum())  # Calculate win-loss difference
+
+        return df
+
+    def make_player_index(self, df, filename='player_index_df.csv'):
+        # Concatenate Player1 and Player2 into one list (contains duplicates).
+        players = pd.concat([df['Player1'], df['Player2']], ignore_index=True)
+
+        # Remove duplicates.
+        unique_names = players.unique()
+
+        # Create a dictionary mapping unique names to unique IDs starting from 1
+        name_to_number = {name: i + 1 for i, name in enumerate(unique_names)}
+        df['Player1'] = df['Player1'].map(name_to_number)
+        df['Player2'] = df['Player2'].map(name_to_number)
+
+        # Create a player index used for lookup starting from 1.
+        player_index_df = pd.DataFrame({'Player': unique_names, 'Index': range(1, len(unique_names) + 1)})
+
+        # Calculate total wins for each player to store in the player index.
+        player_index_df = self.calculate_total_wins(df, player_index_df)
+        player_index_df.to_csv(filename, index=False)
+        print(f"Player index exported to {filename}")
+
+        return df
+
+    def calculate_total_wins(self, df, player_index_df):
+        player_index_df['TotalWins'] = 0
+
+        for index, row in player_index_df.iterrows():
+            player_index = row['Index']
+            wins_as_player1 = df.loc[(df['Player1'] == player_index) & (df['Target'] == 1), 'Target'].count()
+            player_index_df.loc[index, 'TotalWins'] += wins_as_player1
+
+        for index, row in player_index_df.iterrows():
+            player_index = row['Index']
+            wins_as_player2 = df.loc[(df['Player2'] == player_index) & (df['Target'] == 0), 'Target'].count()
+            player_index_df.loc[index, 'TotalWins'] += wins_as_player2
+
+        return player_index_df
+
+    def make_court_surface_index(self, filename='court_surface_index_df.csv'):
+        court_surface_index_df = pd.DataFrame({'CourtSurface': ['Hard Court', 'Clay', 'Grass'], 'Index': [1, 2, 3]})
+        court_surface_index_df.to_csv(filename, index=False)
+        print(f"Dataframe exported to {filename}")
+
+    def encode_df_court_surface(self, df):
+        # Replace CourtSurface entries from dataset with their indexed values from above.
+        # OBS this function also removes all entries where CurtSurface is missing.
+        index = pd.read_csv('court_surface_index_df.csv')
+        encoded_df = pd.merge(df, index, how='left', on='CourtSurface')
+        encoded_df.drop(columns=['CourtSurface'], inplace=True)
+        encoded_df.rename(columns={'Index': 'CourtSurface'}, inplace=True)
+        encoded_df.dropna(subset=['CourtSurface'], inplace=True)
+
+        return encoded_df
+
+    def matchup_hash(self, df):
+        # Hash Player1(index) and Player2(index). Winner first.
+        # Reason for this is to even out the bias towards either Player1 or Player2 in the dataset->
+        # where a player appears more in either column.
+        df['WinnerLoserHash'] = 0
+        for index, row in df.iterrows():
+            hasher = hashlib.sha256()
+            player1 = str(row['Player1'])
+            player2 = str(row['Player2'])
+            target = row['Target']
+            if target == 1:
+                player1_winner = [player1, player2]
+                combined_players = "#".join(player1_winner)
+                hasher.update(combined_players.encode('utf-8'))
+                hash = hasher.hexdigest()
+                # Hasher returns a hex value that's too long for the prediction model to handle, so it must be shortened.
+                short_hash = hash[:12]
+                # The prediction model also can't handle hex values, so it has to be converted to an integer.
+                normalized_hash = int(short_hash, 16)
+                df.at[index, 'WinnerLoserHash'] = normalized_hash
+
+            elif target == 0:
+                player2_winner = [player2, player1]
+                combined_players = "#".join(player2_winner)
+                hasher.update(combined_players.encode('utf-8'))
+                hash = hasher.hexdigest()
+                short_hash = hash[:12]
+                normalized_hash = int(short_hash, 16)
+                df.at[index, 'WinnerLoserHash'] = normalized_hash
+
+        return df
+
+    def merge_total_wins(self, df, player_index_df):
+        merged_df = pd.merge(df, player_index_df, left_on='Player1', right_on='Index', how='left')
+        merged_df.rename(columns={'TotalWins': 'TotalWins_Player1'}, inplace=True)
+
+        merged_df = pd.merge(merged_df, player_index_df, left_on='Player2', right_on='Index', how='left',
+                             suffixes=('_Player1', '_Player2'))
+        merged_df.rename(columns={'TotalWins': 'TotalWins_Player2'}, inplace=True)
+        merged_df.drop(columns=['Player_Player1', 'Index_Player1', 'Player_Player2', 'Index_Player2'], inplace=True)
+
+        return merged_df
+
+    def export_dataframe(self, df, filename='model_df.csv'):
+        df.to_csv(filename, index=False)
+        print(f"Dataframe exported to {filename}")
