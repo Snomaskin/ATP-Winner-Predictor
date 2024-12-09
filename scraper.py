@@ -1,14 +1,17 @@
+import os
+import re
+import sqlite3
+import hashlib
+from hashlib import sha256
+
+import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
-import sqlite3
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from hashlib import sha256
-import re
-import pandas as pd
-import hashlib
+
 
 
 
@@ -22,43 +25,33 @@ TennisScraper:
 Launches starting page with Selenium webdriver. 
 From there it goes through the whole event list (limit this for testing) and clicks through the archive list for each
 event to get to the match data. 
-Scraper requires 'chromedriver.exe' to work.
+Requires 'chromedriver.exe' to work.
 
 DataStorage:
-Collects the scraped data and stores it in a local Sqlite database.
+Collects the scraped data and stores it in a local Sqlite database. It will not overwrite an existing database, only add more matches to it.
+Outputs: 'data.db'
 
 DataCleanup:
 The scraped data contains a lot of old match data and all entries are missing year in MatchDate (it's in EventID).
 This class of methods takes care of all that so that we can delete all old data we don't need for prediction.
 Requires 'event_courtsurfaces.csv'.
 
-DataEncoding:
+PrepareDataframe:
 Encodes the data for modelling.
+Requires 'data.db' from previous steps.
 
-
-Final outputs: model_df.csv, player_index.csv, court_surface_index.csv
+The script will autorun and handle everything if you have all the plugins + chromedriver.exe. Just run 'scraper.py' and follow the instructions.
+Final outputs: 'model_df.csv', 'player_index.csv', 'court_surface_index.csv'
 
 '''
 
 
-def run():
-    scrape_data = TennisMatchScraper()
-    scrape_data.process_matches()
-
-    clean_data = DataCleanup()
-    # Give pipeline the starting year to filter match data depending on how the scraping turned out.
-    clean_data.pipeline(1993)
-
-    encode_data = PrepareDataframe(auto_run=True)
-    encode_data()
-
-if __name__ == "__main__":
-    run()
-
-
 class TennisMatchScraper:
-    def __init__(self):
+    def __init__(self, auto_run= False):
         self.driver = self.launch_browser()
+
+        if auto_run:
+            self.pipeline()
 
     def launch_browser(self):
         chrome_options = webdriver.ChromeOptions()
@@ -69,15 +62,20 @@ class TennisMatchScraper:
 
         return driver
     
-    def process_matches(self, all_source_code: list[str]):
-        database = DataStorage()
-        db_connect = database.database_connect()
-        # The source code of each event is fed to the scraper and the extracted data is added to the database.
-        for event in all_source_code:
-            event_matches = self.scraper(event)
-            if event_matches:
-                database.append_data(db_connect, event_matches)
+    def pipeline(self):
+        archive_it, years_it = self.set_scraper_scope()
+        event_archive_links = self.get_event_archive_links()
+        scraper_link_list = self.get_link_list(event_archive_links, archive_it, years_it)
+        all_source_code = self.get_source_code(scraper_link_list)
+        self.process_matches(all_source_code)
+    
+    def set_scraper_scope(self):
+        while True:
+            archive_iterations = int(input("Number of tournaments to scrape: ").strip())
+            years_iterations = int(input("Number of years per tournament to scrape: ").strip())
 
+            return archive_iterations, years_iterations
+            
     def get_event_archive_links(self):
         menu = WebDriverWait(self.driver, 10).until(
             expected_conditions.visibility_of_element_located((By.XPATH, '//*[@id="lmenu_5724"]')))
@@ -96,10 +94,10 @@ class TennisMatchScraper:
 
         return event_archive_links
 
-    def get_link_list(self, event_archive_links: list[str]) -> list[str]:
+    def get_link_list(self, event_archive_links: list[str], archive_it, years_it) -> list[str]:
         scraper_link_list = []
 
-        for link in event_archive_links[:2]:
+        for link in event_archive_links[:archive_it]:
             try:
                 self.driver.get(link)
                 WebDriverWait(self.driver, 10).until(
@@ -108,7 +106,7 @@ class TennisMatchScraper:
                 elements = self.driver.find_elements(By.CSS_SELECTOR,
                                                      "#fsbody .archive__season a.archive__text--clickable[href*='atp-singles/']")
                 # Adjust number of iterations for how far back in time to scrape.
-                for element in elements[:3]:
+                for element in elements[:years_it]:
                     event_link = element.get_attribute('href')
                     # Append 'results/' to get the right page.
                     results_append = "results/"
@@ -138,6 +136,15 @@ class TennisMatchScraper:
             all_source_code.append(self.driver.page_source)
 
         return all_source_code
+    
+    def process_matches(self, all_source_code: list[str]):
+        database = DataStorage()
+        db_connect = database.database_connect()
+        # The source code of each event is fed to the scraper and the extracted data is added to the database.
+        for event in all_source_code:
+            event_matches = self.scraper(event)
+            if event_matches:
+                database.append_data(db_connect, event_matches)
 
     # Does not work yet.
     def click_more_matches(self):
@@ -261,12 +268,15 @@ class DataStorage():
         return hasher.hexdigest()
 
 
-class DataCleanup:
-    def __init__(self):
+class DataCleanup():
+    def __init__(self, auto_run= False, year_cutoff= 2010):
         self.conn = sqlite3.connect('data.db')
         self.cursor = self.conn.cursor()
         self.YYYYMMDD_REGEX = re.compile(r'^\d{4}-\d{2}.\d{2}')
         self.YYYY_REGEX = re.compile(r'\d{4}')
+
+        if auto_run:
+            self.pipeline(year_cutoff)
 
     def __del__(self):
         self.conn.close()
@@ -276,7 +286,7 @@ class DataCleanup:
         self.delete_where_no_year()
         self.remove_before_year(year_cutoff)
         self.create_tournament_table()
-        self.append_court_surface
+        self.append_court_surface()
 
     def append_year_to_match_date(self):
         self.cursor.execute("SELECT EventID, MatchID, MatchDate FROM MensATPSingles")
@@ -408,7 +418,7 @@ Output: model_df.csv, player_index.csv, court_surface_index.csv
 
 
 class PrepareDataframe:
-    def __init__(self, auto_run=False):
+    def __init__(self, auto_run= False):
         self.conn = sqlite3.connect('data.db')
         self.cursor = self.conn.cursor()
         self.cursor.execute('SELECT * FROM MensATPSingles')
@@ -423,11 +433,11 @@ class PrepareDataframe:
     def prepare_dataframe(self):
         self.df = self.create_binary_target()
         self.df = self.create_player_index(self.df)
-        self.df = self.winner_hash(self.df)
-        self.df = self.create_headtohead(self.df)
-        player_index_df = pd.read_csv('player_index_df.csv')
-        self.df = self.merge_total_wins(self.df, player_index_df)
+        self.df = self.calc_headtohead(self.df)
+        self.create_court_surface_index()
         self.df = self.encode_df_court_surface(self.df)
+        self.df = self.matchup_hash(self.df)
+
         self.export_dataframe(self.df)
 
     def create_binary_target(self):
@@ -448,21 +458,7 @@ class PrepareDataframe:
 
         return sub_df
 
-    def calc_headtohead(self, df):
-        # Variable to measure total wins/losses in matchup between Player1 and Player2.
-        df['HeadToHead'] = 0
-        for index, row in df.iterrows():
-            # Calculate instances of 'Player1' vs 'Player2' where 'Target' = 1.
-            player1_wins = (df[(df['Player1'] == row['Player1']) & (df['Player2'] == row['Player2'])][
-                                'Target'] == 1).sum()
-            # Same as above but in reverse. (I know it's a bit confusing that df['Player1'] is row[PLayer2]).
-            # I have another way of doing this further down which might be easier to follow.
-            df.at[index, 'HeadToHead'] = player1_wins - ((df[(df['Player1'] == row['Player2']) & (
-                    df['Player2'] == row['Player1'])]['Target'] == 1).sum())  # Calculate win-loss difference
-
-        return df
-
-    def make_player_index(self, df, filename='player_index_df.csv'):
+    def create_player_index(self, df, filename= 'player_index_df.csv'):
         # Concatenate Player1 and Player2 into one list (contains duplicates).
         players = pd.concat([df['Player1'], df['Player2']], ignore_index=True)
 
@@ -478,13 +474,15 @@ class PrepareDataframe:
         player_index_df = pd.DataFrame({'Player': unique_names, 'Index': range(1, len(unique_names) + 1)})
 
         # Calculate total wins for each player to store in the player index.
-        player_index_df = self.calculate_total_wins(df, player_index_df)
-        player_index_df.to_csv(filename, index=False)
+        player_index_df = self.calc_total_wins(df, player_index_df)
+        player_index_df.to_csv(filename, index= False)
         print(f"Player index exported to {filename}")
 
-        return df
+        merged_df = self.merge_total_wins(df, player_index_df)
 
-    def calculate_total_wins(self, df, player_index_df):
+        return merged_df
+    
+    def calc_total_wins(self, df, player_index_df):
         player_index_df['TotalWins'] = 0
 
         for index, row in player_index_df.iterrows():
@@ -498,8 +496,36 @@ class PrepareDataframe:
             player_index_df.loc[index, 'TotalWins'] += wins_as_player2
 
         return player_index_df
+    
+    def merge_total_wins(self, df, player_index_df):
+        merged_df = pd.merge(df, player_index_df, left_on='Player1', right_on='Index', how='left')
+        merged_df.rename(columns={'TotalWins': 'TotalWins_Player1'}, inplace=True)
 
-    def make_court_surface_index(self, filename='court_surface_index_df.csv'):
+        merged_df = pd.merge(merged_df, player_index_df, left_on='Player2', right_on='Index', how='left',
+                             suffixes=('_Player1', '_Player2'))
+        merged_df.rename(columns={'TotalWins': 'TotalWins_Player2'}, inplace=True)
+        merged_df.drop(columns=['Player_Player1', 'Index_Player1', 'Player_Player2', 'Index_Player2'], inplace=True)
+
+        return merged_df
+    
+    def calc_headtohead(self, df):
+        # Variable to measure total wins/losses in matchup between Player1 and Player2.
+        df['HeadToHead'] = 0
+        for index, row in df.iterrows():
+            # Calculate instances of 'Player1' vs 'Player2' where 'Target' = 1.
+            player1_wins = (df[(df['Player1'] == row['Player1']) & (df['Player2'] == row['Player2'])][
+                                'Target'] == 1).sum()
+            # Same as above but in reverse. (I know it's a bit confusing that df['Player1'] is row[PLayer2]).
+            # I have another way of doing this further down which might be easier to follow.
+            df.at[index, 'HeadToHead'] = player1_wins - ((df[(df['Player1'] == row['Player2']) & (
+                    df['Player2'] == row['Player1'])]['Target'] == 1).sum())  # Calculate win-loss difference
+
+        return df
+
+    def create_court_surface_index(self, filename= 'court_surface_index_df.csv'):
+        if os.path.exists(filename):
+            return f"Court surface index already exists {filename}"
+        
         court_surface_index_df = pd.DataFrame({'CourtSurface': ['Hard Court', 'Clay', 'Grass'], 'Index': [1, 2, 3]})
         court_surface_index_df.to_csv(filename, index=False)
         print(f"Dataframe exported to {filename}")
@@ -547,17 +573,35 @@ class PrepareDataframe:
 
         return df
 
-    def merge_total_wins(self, df, player_index_df):
-        merged_df = pd.merge(df, player_index_df, left_on='Player1', right_on='Index', how='left')
-        merged_df.rename(columns={'TotalWins': 'TotalWins_Player1'}, inplace=True)
+    def export_dataframe(self, df, filename= 'model_df.csv'):
+        if os.path.exists(filename):
+            while True:
+                user_response = input(f"The file {filename} already exists. Do you want to overwrite it? (y/n): ").lower().strip()
 
-        merged_df = pd.merge(merged_df, player_index_df, left_on='Player2', right_on='Index', how='left',
-                             suffixes=('_Player1', '_Player2'))
-        merged_df.rename(columns={'TotalWins': 'TotalWins_Player2'}, inplace=True)
-        merged_df.drop(columns=['Player_Player1', 'Index_Player1', 'Player_Player2', 'Index_Player2'], inplace=True)
+                if user_response in ['y', 'yes']:
+                    df.to_csv(filename, index= False)
+                    print(f"Dataframe exported to {filename}")
+                    break
+                elif user_response in ['n', 'no']:
+                    new_filename = input("Enter new filename: ").strip() + '.csv'
+                    
+                    if new_filename:
+                        df.to_csv(new_filename, index= False)
+                        print(f"Dataframe exported to {new_filename}")
+                        break
+                    else:
+                        print("Filename cannot be empty. Please try again.")
+                else:
+                    print("Invalid input. Please respond with 'y' or 'n'")
+        else:
+            df.to_csv(filename, index= False)
+            print(f"Dataframe exported to {filename}")
 
-        return merged_df
 
-    def export_dataframe(self, df, filename='model_df.csv'):
-        df.to_csv(filename, index=False)
-        print(f"Dataframe exported to {filename}")
+def run(auto_run= True):
+    TennisMatchScraper(auto_run)
+    DataCleanup(auto_run)
+    PrepareDataframe(auto_run)
+
+if __name__ == "__main__":
+    run()
