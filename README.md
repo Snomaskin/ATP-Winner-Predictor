@@ -1,19 +1,58 @@
-# ATP-Winner-Predictor
-Predict who wins a matchup between two ranked tennis players.
+## Project Overview
+This repository contains a comprehensive toolset for building a simple prediction application using self-collected data. The project is a personal learning experience that demonstrates a complete data processing and machine learning workflow, ultimately presented in an interactive web-based interface. 
 
-This is my first project and it was only developed for my own learning experience.
-Please don't use the program for betting. It's just for fun and the predictions are not that accurate.
+## Project Structure
+```
+/
+├── scraper.py
+├── backend-services/
+│   ├── fastapi/
+│   │   └── api.py
+│   │   └── prediction_model.py
+│   └── node/
+└── www/
+│   └── webapp.html
+```
+### Data Collection and Processing 
+`scraper.py`
+#### Includes:
+- **Scraper Tool**: Collect raw match data. Tuned for www.flashscore.com
+- **Data Storage Tool:** Store scraped data in an SQLite database
+- **Cleanup Tool**: Process and clean the collected data
+- **Encoding Tool**: Prepare data for machine learning algorithms
 
 
-Use TennisScraper to collect and sort data. The code follows a step-by-step process from top to bottom. 
-Once all the source code has been gathered you only have to run it through 'process_matches' and it will scrape the relevant data and add it to an SQLite database. 
-
-Output from the the scraper contains a lot of old data so we have to make some adjustments with DataCleanup before it can be fed to the prediction algorithm. 
-
-From there the data has to be encoded so it can be understood by the Scikit-learn RandomForest prediction algorithm. Just follow all the steps in PredictionModel -> PrepareDataframe.
-
-Now you can run UserInterface and, if all has gone well, you should be able make prediction requests to ModelOperations by following the on-screen instructions.
+### Machine Learning
+`prediction_model.py`
+- Uses Scikit-Learn Random Forest Classifier for predictions
+- **Note**: Don't use predictions for anything serious. The project emphasis is on showcasing the integration of data processing and model prediction in a real-world application, rather than achieving high prediction accuracy.
 
 
+### Interactive Web GUI
+`webapp.html`
+- **Dynamic UI**: Reactive design principles for seamless user interaction
+- **User Input Handling**: Allow users to input data and receive instant (when run locally) predictions through API routing
+- **Custom loading animation**: Made with CSS
 
-If you have suggestions for how things can be done better I would be glad to hear them :-)
+
+### Server components
+`/backend-services`
+#### Includes:
+- **FastAPI Server:** Handles prediction logic and data processing
+- **Node.js Middleware:** For requests logging and rate limiting
+- **Containerization:** Docker builds available for both backend services
+
+
+## Getting Started
+1. Install the required python modules from `requirements.txt`. Preferably in a virtual environment
+2. Run the `scraper.py` and follow the instructions in the terminal to collect and process match data
+3. Run `api.py`
+4. Host a server locally and use the GUI in `webapp.html` to predict match outcomes with the match data
+
+ 
+## Disclaimer
+**This project is only for educational purposes.** The predictions are not reliable or accurate enough for practical applications.
+
+
+## Contributions
+Suggestions and improvements are welcome! If you have ideas on how to enhance the project, please feel free to open an issue or submit a pull request. Happy coding! 🚀
