@@ -39,7 +39,7 @@ PrepareDataframe:
 Encodes the data for modelling.
 Requires 'data.db' from previous steps.
 
-The script will autorun and handle everything if you have all the plugins + chromedriver.exe. Just run 'scraper.py' and follow the instructions.
+The script will autorun and handle everything if you have all the plugins. Just run 'scraper.py' and follow the instructions in the terminal.
 Final outputs: 'model_df.csv', 'player_index.csv', 'court_surface_index.csv'
 
 '''
