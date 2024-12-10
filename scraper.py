@@ -425,6 +425,9 @@ class PrepareDataframe:
         self.df = pd.DataFrame(results, columns=columns)
         self.conn.close()
 
+        self.tables_dir = os.path.join('backend-services', 'fastapi', 'tables')
+        os.makedirs(self.tables_dir, exist_ok=True) 
+
         if auto_run:
             self.prepare_dataframe()
         
@@ -457,6 +460,7 @@ class PrepareDataframe:
         return sub_df
 
     def create_player_index(self, df, filename= 'player_index_df.csv'):
+        file_path = os.path.join(self.tables_dir, filename)
         # Concatenate Player1 and Player2 into one list (contains duplicates).
         players = pd.concat([df['Player1'], df['Player2']], ignore_index=True)
 
@@ -473,8 +477,8 @@ class PrepareDataframe:
 
         # Calculate total wins for each player to store in the player index.
         player_index_df = self.calc_total_wins(df, player_index_df)
-        player_index_df.to_csv(filename, index= False)
-        print(f"Player index exported to {filename}")
+        player_index_df.to_csv(file_path, index= False)
+        print(f"Player index exported to {file_path}")
 
         merged_df = self.merge_total_wins(df, player_index_df)
 
@@ -521,12 +525,13 @@ class PrepareDataframe:
         return df
 
     def create_court_surface_index(self, filename= 'court_surface_index_df.csv'):
-        if os.path.exists(filename):
-            return f"Court surface index already exists {filename}"
+        file_path = os.path.join(self.tables_dir, filename)
+        if os.path.exists(file_path):
+            return f"Court surface index already exists: {filename}"
         
         court_surface_index_df = pd.DataFrame({'CourtSurface': ['Hard Court', 'Clay', 'Grass'], 'Index': [1, 2, 3]})
-        court_surface_index_df.to_csv(filename, index=False)
-        print(f"Dataframe exported to {filename}")
+        court_surface_index_df.to_csv(file_path, index=False)
+        print(f"Court Surface data frame exported to {file_path}")
 
     def encode_df_court_surface(self, df):
         # Replace CourtSurface entries from dataset with their indexed values from above.
@@ -571,29 +576,29 @@ class PrepareDataframe:
 
         return df
 
-    def export_dataframe(self, df, filename= 'model_df.csv'):
-        if os.path.exists(filename):
+    def export_dataframe(self, df, filename='model_df.csv'):
+        file_path = os.path.join(self.tables_dir, filename)
+        if os.path.exists(file_path):
             while True:
                 user_response = input(f"The file {filename} already exists. Do you want to overwrite it? (y/n): ").lower().strip()
-
                 if user_response in ['y', 'yes']:
-                    df.to_csv(filename, index= False)
-                    print(f"Dataframe exported to {filename}")
+                    df.to_csv(file_path, index=False)
+                    print(f"Dataframe exported to {file_path}")
                     break
                 elif user_response in ['n', 'no']:
                     new_filename = input("Enter new filename: ").strip() + '.csv'
-                    
                     if new_filename:
-                        df.to_csv(new_filename, index= False)
-                        print(f"Dataframe exported to {new_filename}")
+                        new_file_path = os.path.join(self.tables_dir, new_filename)
+                        df.to_csv(new_file_path, index=False)
+                        print(f"Dataframe exported to {new_file_path}")
                         break
                     else:
                         print("Filename cannot be empty. Please try again.")
                 else:
-                    print("Invalid input. Please respond with 'y' or 'n'")
+                    print("Invalid input. Please respond with 'y' or 'n'.")
         else:
-            df.to_csv(filename, index= False)
-            print(f"Dataframe exported to {filename}")
+            df.to_csv(file_path, index=False)
+            print(f"Dataframe exported to {file_path}")
 
 
 def run(auto_run= True):
