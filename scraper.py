@@ -25,7 +25,6 @@ TennisScraper:
 Launches starting page with Selenium webdriver. 
 From there it goes through the whole event list (limit this for testing) and clicks through the archive list for each
 event to get to the match data. 
-Requires 'chromedriver.exe' to work.
 
 DataStorage:
 Collects the scraped data and stores it in a local Sqlite database. It will not overwrite an existing database, only add more matches to it.
@@ -55,7 +54,6 @@ class TennisMatchScraper:
 
     def launch_browser(self):
         chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("webdriver.chrome.driver=chromedriver.exe")
         chrome_options.add_argument("--headless")
         driver = webdriver.Chrome(options=chrome_options)
         driver.get('https://www.flashscore.com/tennis/')
