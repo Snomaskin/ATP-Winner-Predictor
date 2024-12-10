@@ -12,9 +12,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
-
-
-
 '''
 A web scraper to get tennis match data from www.flashscore.com and store it in an Sqlite database.
 Currently it is only tuned for men's ATP singles.
@@ -43,7 +40,6 @@ The script will autorun and handle everything if you have all the plugins. Just 
 Final outputs: 'model_df.csv', 'player_index.csv', 'court_surface_index.csv'
 
 '''
-
 
 class TennisMatchScraper:
     def __init__(self, auto_run= False):
