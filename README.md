@@ -1,5 +1,5 @@
 ## Project Overview
-This repository contains a comprehensive toolset for building a simple prediction application using self-collected data. The project is a personal learning experience that demonstrates a complete data processing and machine learning workflow, ultimately presented in an interactive web-based interface. 
+This repository contains a comprehensive toolset for building a simple prediction application using self-collected data. The project is a personal learning experience that demonstrates a complete workflow of data collection, processing, and machine learning, ultimately presented in an interactive web-based interface with backend infrastructure for request processing.
 
 ## Project Structure
 ```
@@ -11,7 +11,7 @@ This repository contains a comprehensive toolset for building a simple predictio
 │   │   └── prediction_model.py
 │   └── node/
 └── www/
-│   └── webapp.html
+    └── webapp.html
 ```
 ### Data Collection and Processing 
 `scraper.py`
